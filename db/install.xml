@@ -9,16 +9,13 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Ссылка на ID вопроса в таблице question"/>
-        <FIELD NAME="layouttype" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Тип отображения: горизонтальный или вертикальный"/>
         <FIELD NAME="groupcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="2" SEQUENCE="false" COMMENT="Количество групп, куда можно перетаскивать элементы"/>
-        <FIELD NAME="randomize" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Перемешивать элементы для перетаскивания"/>
-        <FIELD NAME="gradingtype" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Тип оценки: строгий, частичный и т.д."/>
         <FIELD NAME="sequencecheck" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Проверка последовательности: 0 - четкая, 1 - нечеткая"/>
         <FIELD NAME="correctfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Обратная связь для правильного ответа"/>
         <FIELD NAME="correctfeedbackformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="incorrectfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Обратная связь для неправильного ответа"/>
         <FIELD NAME="incorrectfeedbackformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="shownumcorrect" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Показывать ли количество правильных ответов студентам"/>
+		<FIELD NAME="shownumcorrect" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Показывать ли количество правильных ответов студентам"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Первичный ключ для qtype_ddingroups_options"/>
