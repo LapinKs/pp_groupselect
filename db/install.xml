@@ -1,58 +1,47 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/type/groupselect/db" VERSION="20241130" COMMENT="XMLDB file for Moodle question/type/groupselect."
+<XMLDB PATH="question/type/ddingroups/db" VERSION="20241205" COMMENT="XMLDB file for Moodle question/type/ddingroups"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
   <TABLES>
-
-    <!-- Основная таблица настроек вопроса -->
-    <TABLE NAME="question_groupselect" COMMENT="Defines group select questions">
+    <!-- Основная таблица для хранения настроек типа вопроса -->
+    <TABLE NAME="qtype_ddingroups_options" COMMENT="Options for drag-and-drop questions">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="shuffleanswers" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
-        <FIELD NAME="feedbackcorrect" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Feedback for correct response."/>
-        <FIELD NAME="feedbackcorrectformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="feedbackincorrect" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Feedback for incorrect response."/>
-        <FIELD NAME="feedbackincorrectformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="shownumcorrect" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Ссылка на ID вопроса в таблице question"/>
+        <FIELD NAME="layouttype" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Тип отображения: горизонтальный или вертикальный"/>
+        <FIELD NAME="groupcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="2" SEQUENCE="false" COMMENT="Количество групп, куда можно перетаскивать элементы"/>
+        <FIELD NAME="randomize" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Перемешивать элементы для перетаскивания"/>
+        <FIELD NAME="gradingtype" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Тип оценки: строгий, частичный и т.д."/>
+        <FIELD NAME="sequencecheck" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Проверка последовательности: 0 - четкая, 1 - нечеткая"/>
+        <FIELD NAME="correctfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Обратная связь для правильного ответа"/>
+        <FIELD NAME="correctfeedbackformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="incorrectfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Обратная связь для неправильного ответа"/>
+        <FIELD NAME="incorrectfeedbackformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="shownumcorrect" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Показывать ли количество правильных ответов студентам"/>
       </FIELDS>
       <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Первичный ключ для qtype_ddingroups_options"/>
+        <KEY NAME="question" TYPE="foreign-unique" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
 
-    <!-- Таблица групп -->
-    <TABLE NAME="question_groupselect_groups" COMMENT="Stores the groups for the group select question">
+    <!-- Дополнительная таблица для хранения элементов перетаскивания -->
+    <TABLE NAME="qtype_ddingroups_items" COMMENT="Items to be dragged in drag-and-drop questions">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="groupname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Name of the group"/>
-        <FIELD NAME="groupposition" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Order of the group"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Ссылка на ID вопроса в таблице question"/>
+        <FIELD NAME="content" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Содержимое элемента для перетаскивания"/>
+        <FIELD NAME="contentformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Формат содержимого (например, HTML)"/>
+        <FIELD NAME="groupid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Идентификатор группы, в которую элемент должен быть помещен"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Порядок сортировки элементов"/>
+        <FIELD NAME="sequencecheck" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="0 - четкая последовательность, 1 - допускаются вариации"/>
       </FIELDS>
       <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Первичный ключ для qtype_ddingroups_items"/>
+        <KEY NAME="question" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
-
-    <!-- Таблица ответов -->
-    <TABLE NAME="question_groupselect_answers" COMMENT="Stores the answers for the group select question">
-      <FIELDS>
-        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="groupid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="answertext" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Text of the answer"/>
-        <FIELD NAME="answerposition" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Order of the answer within the group"/>
-      </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
-        <KEY NAME="groupid" TYPE="foreign" FIELDS="groupid" REFTABLE="question_groupselect_groups" REFFIELDS="id"/>
-      </KEYS>
-    </TABLE>
-
   </TABLES>
 </XMLDB>
 
