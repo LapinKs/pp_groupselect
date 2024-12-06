@@ -1,0 +1,96 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template qtype_ddingroups/formulation_and_controls
+
+    Renders the question formulation and controls.
+
+    Context variables required for this template:
+    * questiontext - Question text.
+    * responsename - Response name for this question attempt.
+    * responseid - Response name for this question attempt.
+    * value - Comma separated md5keys of the answer.
+    * ablockid - Block id.
+    * layoutclass - Layout class.
+    * numberingstyle - Numbering style.
+    * active - if qa is active.
+    * sortableid - Sortable id.
+    * answers - An array containing the score details.
+    * readonly - Whether the question is readonly or not.
+    Example context (json):
+    {
+        "questiontext": "Order this",
+        "responsename": "q13:1_response_2",
+        "responseid": "id_q13_1_response_2",
+        "value": "ddingroups_item_497031794414a552435f90151ac3b54b,ddingroups_item_5a35edab0f2bf86dfa3901baa8c235dc",
+        "ablockid": "id_ablock_2",
+        "layoutclass": "vertical",
+        "numberingstyle": "numberingnone",
+        "active": true,
+        "sortableid": "id_sortable_2",
+        "readonly": true,
+        "answers": [
+            {
+                "id": "ddingroups_item_497031794414a552435f90151ac3b54b",
+                "scoreclass": "correct",
+                "answertext": "Oriented",
+                "feedbackimage": "<i class='icon fa fa-remove text-danger fa-fw' title='Incorrect' role='img' aria-label='Incorrect'></i>"
+            },
+            {
+                "id": "ddingroups_item_5a35edab0f2bf86dfa3901baa8c235dc",
+                "scoreclass": "correct",
+                "answertext": "Object",
+                "feedbackimage": "<i class='icon fa fa-remove text-danger fa-fw' title='Incorrect' role='img' aria-label='Incorrect'></i>"
+            }
+        ]
+    }
+}}
+
+<div class="qtext">
+    {{{questiontext}}}
+    {{#responsename}}
+        <div id="{{ablockid}}" class="ablock">
+            <div class="answer ddingroups">
+                <ul class="sortablelist {{layoutclass}}" id="{{sortableid}}">
+                    {{#answers}}
+                        <li class="p-2 {{^readonly}}sortableitem{{/readonly}} {{scoreclass}}" id="{{id}}">
+                            <div class="d-flex align-items-center">
+                                {{^readonly}}
+                                <div class="grip px-2">
+                                    <i class="fas fa-grip-vertical" aria-hidden="true"></i>
+                                </div>
+                                {{/readonly}}
+                                <div class="flex-grow-1 px-2">
+                                    {{{answertext}}}
+                                    {{{feedbackimage}}}
+                                </div>
+                            </div>
+                        </li>
+                    {{/answers}}
+                </ul>
+            </div>
+        </div>
+        <input type="hidden" name="{{responsename}}" id="{{responseid}}" value="{{value}}">
+    {{/responsename}}
+</div>
+{{^readonly}}
+    {{#js}}
+        require(['qtype_ddingroups/dragcontroller'], function(dragcontroller) {
+            dragcontroller.init('{{sortableid}}', '{{responseid}}');
+        });
+    {{/js}}
+{{/readonly}}
