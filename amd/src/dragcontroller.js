@@ -30,22 +30,20 @@ export default class DragReorder {
         this.startListeners();
     }
 
-    /**
-     * Создает группы на основе конфигурации.
-     */
+  
     createGroups() {
-        const groupCount = this.config.groupCount || 2; // По умолчанию 2 группы.
+        const groupCount = this.config.groupCount || 2; 
 
-        // Создаем группы и добавляем их в DOM.
+       
         for (let i = 0; i < groupCount; i++) {
             const group = document.createElement('ul');
             group.classList.add('sortable-group');
-            group.dataset.group = i + 1; // Уникальный идентификатор группы.
-            this.config.parentContainer.appendChild(group); // Добавляем группы в контейнер.
+            group.dataset.group = i + 1; 
+            this.config.parentContainer.appendChild(group); 
             this.groups.push(group);
         }
 
-        // Если в конфигурации уже есть элементы, распределяем их по группам.
+        
         if (this.config.items) {
             this.config.items.forEach((item, index) => {
                 const groupIndex = index % groupCount;
@@ -55,9 +53,7 @@ export default class DragReorder {
         }
     }
 
-    /**
-     * Начало слушателей событий.
-     */
+   
     startListeners() {
         const pointerHandle = e => {
             if (e.target.closest(this.config.item)) {
@@ -69,18 +65,14 @@ export default class DragReorder {
             }
         };
 
-        // Устанавливаем слушатели для всех групп.
+      
         this.groups.forEach(group => {
             group.addEventListener('mousedown', pointerHandle);
             group.addEventListener('touchstart', pointerHandle);
         });
     }
 
-    /**
-     * Начинает процесс перетаскивания.
-     * @param {Event} e
-     * @param {Object} details
-     */
+    
     startDrag(e, details) {
         this.dragStart = {time: new Date().getTime(), x: details.x, y: details.y};
 
@@ -105,14 +97,12 @@ export default class DragReorder {
         }).catch(Notification.exception);
     }
 
-    /**
-     * Обрабатывает перемещение прокси-элемента.
-     */
+    
     dragMove() {
         let closestGroup = null;
         let closestDistance = null;
 
-        // Определяем, какая группа находится ближе всего к текущему положению.
+        
         this.groups.forEach(group => {
             const distance = this.distanceBetweenElements(group);
             if (closestGroup === null || distance < closestDistance) {
@@ -121,18 +111,16 @@ export default class DragReorder {
             }
         });
 
-        // Если ближайшая группа отличается от текущей, перемещаем элемент.
+      
         if (closestGroup && closestGroup !== this.itemDragging.closest('.sortable-group')[0]) {
             closestGroup.appendChild(this.itemDragging[0]);
         }
 
-        // Обновляем прокси.
+        
         this.updateProxy();
     }
 
-    /**
-     * Завершает процесс перетаскивания.
-     */
+    
     dragEnd() {
         if (typeof this.config.reorderEnd !== 'undefined') {
             this.config.reorderEnd(this.groups, this.itemDragging);
@@ -148,32 +136,21 @@ export default class DragReorder {
         this.dragStart = null;
     }
 
-    /**
-     * Получает текущий порядок элементов во всех группах.
-     * @returns {Array} массив массивов, где каждый подмассив — элементы группы.
-     */
+    
     getCurrentOrder() {
         return this.groups.map(group => {
             return Array.from(group.querySelectorAll(this.config.item)).map(item => this.config.idGetter(item));
         });
     }
 
-    /**
-     * Вычисляет расстояние между центрами элементов.
-     * @param {HTMLElement} element
-     * @return {number}
-     */
+    
     distanceBetweenElements(element) {
         const [e1, e2] = [$(element), $(this.proxy)];
         const [dx, dy] = [this.midX(e1) - this.midX(e2), this.midY(e1) - this.midY(e2)];
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /**
-     * Инициализация компонента.
-     * @param {String} containerId
-     * @param {Object} config
-     */
+    
     static init(containerId, config) {
         const parentContainer = document.querySelector(`#${containerId}`);
         config.parentContainer = parentContainer;
