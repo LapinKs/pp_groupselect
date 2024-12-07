@@ -366,8 +366,8 @@ class qtype_ddingroups extends question_type {
      */
     public function extract_options_for_export(stdClass $question): array {
         $gradingtype = match ($question->options->gradingtype) {
-            qtype_ordering_question::GRADING_ABSOLUTE_POSITION => 'ABSOLUTE_POSITION',
-            qtype_ordering_question::GRADING_RELATIVE_TO_CORRECT => 'RELATIVE_TO_CORRECT',
+            qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION => 'ABSOLUTE_POSITION',
+            qtype_ddingroups_question::GRADING_RELATIVE_TO_CORRECT => 'RELATIVE_TO_CORRECT',
             default => '', // Shouldn't happen !!
         };
         $showgrading = match ($question->options->showgrading) {
@@ -505,9 +505,9 @@ class qtype_ddingroups extends question_type {
     public function set_options_for_import(stdClass $question, 
            string $showgrading, string $gradingtype): void {
             $question->gradingtype = match (strtoupper($gradingtype)) {
-                'ABS', 'ABSOLUTE', 'ABSOLUTE_POSITION' => qtype_ordering_question::GRADING_ABSOLUTE_POSITION,
-                'RELATIVE_TO_CORRECT' => qtype_ordering_question::GRADING_RELATIVE_TO_CORRECT,
-                default => qtype_ordering_question::GRADING_RELATIVE_NEXT_EXCLUDE_LAST,
+                'ABS', 'ABSOLUTE', 'ABSOLUTE_POSITION' => qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION,
+                'RELATIVE_TO_CORRECT' => qtype_ddingroups_question::GRADING_RELATIVE_TO_CORRECT,
+                default => qtype_ddingroups_question::GRADING_RELATIVE_NEXT_EXCLUDE_LAST,
             };
         // Set "showgrading" option.
         $question->showgrading = match (strtoupper($showgrading)) {
