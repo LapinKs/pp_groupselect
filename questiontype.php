@@ -1,724 +1,520 @@
 <?php
-/**
- * Version information for the mulridrop question type.
- *
- * @package    qtype
- * @subpackage multidrop
- */
-class qtype_numerical extends question_type {
-    const UNITINPUT = 0;
-    const UNITRADIO = 1;
-    const UNITSELECT = 2;
-
-    const UNITNONE = 3;
-    const UNITGRADED = 1;
-    const UNITOPTIONAL = 0;
-
-    const UNITGRADEDOUTOFMARK = 1;
-    const UNITGRADEDOUTOFMAX = 2;
+class qtype_ddingroups extends question_type {
 
     /**
-     * Validate that a string is a number formatted correctly for the current locale.
-     * @param string $x a string
-     * @return bool whether $x is a number that the numerical question type can interpret.
+     * Determine if the question type can have HTML answers.
+     *
+     * @return bool
+     * @codeCoverageIgnore
      */
-    public static function is_valid_number(string $x): bool {
-        $ap = new qtype_numerical_answer_processor(array());
-        list($value, $unit) = $ap->apply_units($x);
-        return !is_null($value) && !$unit;
-    }
-
-    public function get_question_options($question) {
-        global $CFG, $DB, $OUTPUT;
-        parent::get_question_options($question);
-        // Get the question answers and their respective tolerances
-        // Note: question_numerical is an extension of the answer table rather than
-        //       the question table as is usually the case for qtype
-        //       specific tables.
-        if (!$question->options->answers = $DB->get_records_sql(
-                                "SELECT a.*, n.tolerance " .
-                                "FROM {question_answers} a, " .
-                                "     {question_numerical} n " .
-                                "WHERE a.question = ? " .
-                                "    AND   a.id = n.answer " .
-                                "ORDER BY a.id ASC", array($question->id))) {
-            echo $OUTPUT->notification('Error: Missing question answer for numerical question ' .
-                    $question->id . '!');
-            return false;
-        }
-
-        $question->hints = $DB->get_records('question_hints',
-                array('questionid' => $question->id), 'id ASC');
-
-        $this->get_numerical_units($question);
-        // Get_numerical_options() need to know if there are units
-        // to set correctly default values.
-        $this->get_numerical_options($question);
-
-        // If units are defined we strip off the default unit from the answer, if
-        // it is present. (Required for compatibility with the old code and DB).
-        if ($defaultunit = $this->get_default_numerical_unit($question)) {
-            foreach ($question->options->answers as $key => $val) {
-                $answer = trim($val->answer);
-                $length = strlen($defaultunit->unit);
-                if ($length && substr($answer, -$length) == $defaultunit->unit) {
-                    $question->options->answers[$key]->answer =
-                            substr($answer, 0, strlen($answer)-$length);
-                }
-            }
-        }
-
+    public function has_html_answers(): bool {
         return true;
     }
 
-    public function get_numerical_units(&$question) {
-        global $DB;
-
-        if ($units = $DB->get_records('question_numerical_units',
-                array('question' => $question->id), 'id ASC')) {
-            $units = array_values($units);
-        } else {
-            $units = array();
-        }
-        foreach ($units as $key => $unit) {
-            $units[$key]->multiplier = clean_param($unit->multiplier, PARAM_FLOAT);
-        }
-        $question->options->units = $units;
-        return true;
+    public function extra_question_fields(): array {
+        return [
+            'qtype_ddingroups_options','gradingtype', 'showgrading',
+        ];
     }
 
-    public function get_default_numerical_unit($question) {
-        if (isset($question->options->units[0])) {
-            foreach ($question->options->units as $unit) {
-                if (abs($unit->multiplier - 1.0) < '1.0e-' . ini_get('precision')) {
-                    return $unit;
-                }
-            }
-        }
-        return false;
-    }
+    protected function initialise_question_instance(question_definition $question, $questiondata): void {
+        global $CFG;
 
-    public function get_numerical_options($question) {
-        global $DB;
-        if (!$options = $DB->get_record('question_numerical_options',
-                array('question' => $question->id))) {
-            // Old question, set defaults.
-            $question->options->unitgradingtype = 0;
-            $question->options->unitpenalty = 0.1;
-            if ($defaultunit = $this->get_default_numerical_unit($question)) {
-                $question->options->showunits = self::UNITINPUT;
-            } else {
-                $question->options->showunits = self::UNITNONE;
-            }
-            $question->options->unitsleft = 0;
+        parent::initialise_question_instance($question, $questiondata);
 
-        } else {
-            $question->options->unitgradingtype = $options->unitgradingtype;
-            $question->options->unitpenalty = $options->unitpenalty;
-            $question->options->showunits = $options->showunits;
-            $question->options->unitsleft = $options->unitsleft;
+        $question->answers = $questiondata->options->answers;
+        foreach ($question->answers as $answerid => $answer) {
+            $question->answers[$answerid]->md5key = 'ddingroups_item_' . md5(($CFG->passwordsaltmain ?? '') . $answer->answer);
         }
 
-        return true;
+        $this->initialise_combined_feedback($question, $questiondata, true);
     }
 
     public function save_defaults_for_new_questions(stdClass $fromform): void {
         parent::save_defaults_for_new_questions($fromform);
-        $this->set_default_value('unitrole', $fromform->unitrole);
-        $this->set_default_value('unitpenalty', $fromform->unitpenalty);
-        $this->set_default_value('unitgradingtypes', $fromform->unitgradingtypes);
-        $this->set_default_value('multichoicedisplay', $fromform->multichoicedisplay);
-        $this->set_default_value('unitsleft', $fromform->unitsleft);
+        $this->set_default_value('gradingtype', $fromform->gradingtype);
+        $this->set_default_value('showgrading', $fromform->showgrading);
     }
 
-    /**
-     * Save the units and the answers associated with this question.
-     */
-    public function save_question_options($question) {
+    public function save_question_options($question): bool|stdClass {
         global $DB;
+
+        $result = new stdClass();
         $context = $question->context;
 
-        // Get old versions of the objects.
-        $oldanswers = $DB->get_records('question_answers',
-                array('question' => $question->id), 'id ASC');
-        $oldoptions = $DB->get_records('question_numerical',
-                array('question' => $question->id), 'answer ASC');
+        // Remove empty answers.
+        $question->answer = array_filter($question->answer, [$this, 'is_not_blank']);
+        $question->answer = array_values($question->answer); // Make keys sequential.
 
-        // Save the units.
-        $result = $this->save_units($question);
-        if (isset($result->error)) {
+        // Count how many answers we have.
+        $countanswers = count($question->answer);
+
+        // Search/replace strings to reduce simple <p>...</p> to plain text.
+        $psearch = '/^\s*<p>\s*(.*?)(\s*<br\s*\/?>)*\s*<\/p>\s*$/';
+        $preplace = '$1';
+
+        // Search/replace strings to standardize vertical align of <img> tags.
+        $imgsearch = '/(<img[^>]*)\bvertical-align:\s*[a-zA-Z0-9_-]+([^>]*>)/';
+        $imgreplace = '$1'.'vertical-align:text-top'.'$2';
+
+        // Check at least two answers exist.
+        if ($countanswers < 2) {
+            $result->notice = get_string('notenoughanswers', 'qtype_ddingroups', '2');
             return $result;
+        }
+
+        $question->feedback = range(1, $countanswers);
+
+        if ($answerids = $DB->get_records('question_answers', ['question' => $question->id], 'id ASC', 'id,question')) {
+            $answerids = array_keys($answerids);
         } else {
-            $units = $result->units;
+            $answerids = [];
         }
 
         // Insert all the new answers.
-        foreach ($question->answer as $key => $answerdata) {
-            // Check for, and ingore, completely blank answer from the form.
-            if (trim($answerdata) == '' && $question->fraction[$key] == 0 &&
-                    html_is_blank($question->feedback[$key]['text'])) {
+        foreach ($question->answer as $i => $answer) {
+            $answertext = '';
+            $answerformat = 0;
+            $answeritemid = null;
+
+            // Extract $answer fields.
+            if (is_string($answer)) {
+                // Import from file.
+                $answertext = $answer;
+            } else if (is_array($answer)) {
+                // Input from browser.
+                if (isset($answer['text'])) {
+                    $answertext = $answer['text'];
+                }
+                if (isset($answer['format'])) {
+                    $answerformat = $answer['format'];
+                }
+                if (isset($answer['itemid'])) {
+                    $answeritemid = $answer['itemid'];
+                }
+            }
+
+            // Reduce simple <p>...</p> to plain text.
+            if (substr_count($answertext, '<p>') == 1) {
+                $answertext = preg_replace($psearch, $preplace, $answertext);
+            }
+            $answertext = trim($answertext);
+
+            // Skip empty answers.
+            if ($answertext == '') {
                 continue;
             }
 
-            // Update an existing answer if possible.
-            $answer = array_shift($oldanswers);
-            if (!$answer) {
-                $answer = new stdClass();
-                $answer->question = $question->id;
-                $answer->answer = '';
-                $answer->feedback = '';
-                $answer->id = $DB->insert_record('question_answers', $answer);
-            }
+            // Standardize vertical align of img tags.
+            $answertext = preg_replace($imgsearch, $imgreplace, $answertext);
 
-            if (trim($answerdata) === '*') {
-                $answer->answer = '*';
+            // Prepare the $answer object.
+            $answer = (object) [
+                'question' => $question->id,
+                'fraction' => ($i + 1), // Start at 1.
+                'answer' => $answertext,
+                'answerformat' => $answerformat,
+                'feedback' => '',
+                'feedbackformat' => FORMAT_MOODLE,
+            ];
+
+            // Add/insert $answer into the database.
+            if ($answer->id = array_shift($answerids)) {
+                if (!$DB->update_record('question_answers', $answer)) {
+                    $result->error = get_string('cannotupdaterecord', 'error', 'question_answers (id='.$answer->id.')');
+                    return $result;
+                }
             } else {
-                $answer->answer = $this->apply_unit($answerdata, $units,
-                        !empty($question->unitsleft));
-                if ($answer->answer === false) {
-                    $result->notice = get_string('invalidnumericanswer', 'qtype_numerical');
+                unset($answer->id);
+                if (!$answer->id = $DB->insert_record('question_answers', $answer)) {
+                    $result->error = get_string('cannotinsertrecord', 'error', 'question_answers');
+                    return $result;
                 }
             }
-            $answer->fraction = $question->fraction[$key];
-            $answer->feedback = $this->import_or_save_files($question->feedback[$key],
-                    $context, 'question', 'answerfeedback', $answer->id);
-            $answer->feedbackformat = $question->feedback[$key]['format'];
-            $DB->update_record('question_answers', $answer);
 
-            // Set up the options object.
-            if (!$options = array_shift($oldoptions)) {
-                $options = new stdClass();
-            }
-            $options->question = $question->id;
-            $options->answer   = $answer->id;
-            if (trim($question->tolerance[$key]) == '') {
-                $options->tolerance = '';
-            } else {
-                $options->tolerance = $this->apply_unit($question->tolerance[$key],
-                        $units, !empty($question->unitsleft));
-                if ($options->tolerance === false) {
-                    $result->notice = get_string('invalidnumerictolerance', 'qtype_numerical');
-                }
-                $options->tolerance = (string)$options->tolerance;
-            }
-            if (isset($options->id)) {
-                $DB->update_record('question_numerical', $options);
-            } else {
-                $DB->insert_record('question_numerical', $options);
+            // Copy files across from draft files area.
+            // Note: we must do this AFTER inserting the answer record
+            // because the answer id is used as the file's "itemid".
+            if ($answeritemid) {
+                $answertext = file_save_draft_area_files($answeritemid, $context->id, 'question', 'answer', $answer->id,
+                    $this->fileoptions, $answertext);
+                $DB->set_field('question_answers', 'answer', $answertext, ['id' => $answer->id]);
             }
         }
+        // Create $options for this ddingroups question.
+        $options = (object) [
+            'questionid' => $question->id,
+            'gradingtype' => $question->gradingtype,
+            'showgrading' => $question->showgrading,
+        ];
+        $options = $this->save_combined_feedback_helper($options, $question, $context, true);
+        $this->save_hints($question, true);
 
-        // Delete any left over old answer records.
-        $fs = get_file_storage();
-        foreach ($oldanswers as $oldanswer) {
-            $fs->delete_area_files($context->id, 'question', 'answerfeedback', $oldanswer->id);
-            $DB->delete_records('question_answers', array('id' => $oldanswer->id));
-        }
-        foreach ($oldoptions as $oldoption) {
-            $DB->delete_records('question_numerical', array('id' => $oldoption->id));
-        }
-
-        $result = $this->save_unit_options($question);
-        if (!empty($result->error) || !empty($result->notice)) {
-            return $result;
-        }
-
-        $this->save_hints($question);
-
-        return true;
-    }
-
-    /**
-     * The numerical options control the display and the grading of the unit
-     * part of the numerical question and related types (calculateds)
-     * Questions previous to 2.0 do not have this table as multianswer questions
-     * in all versions including 2.0. The default values are set to give the same grade
-     * as old question.
-     *
-     */
-    public function save_unit_options($question) {
-        global $DB;
-        $result = new stdClass();
-
-        $update = true;
-        $options = $DB->get_record('question_numerical_options',
-                array('question' => $question->id));
-        if (!$options) {
-            $options = new stdClass();
-            $options->question = $question->id;
-            $options->id = $DB->insert_record('question_numerical_options', $options);
-        }
-
-        if (isset($question->unitpenalty)) {
-            $options->unitpenalty = $question->unitpenalty;
-        } else {
-            // Either an old question or a close question type.
-            $options->unitpenalty = 1;
-        }
-
-        $options->unitgradingtype = 0;
-        if (isset($question->unitrole)) {
-            // Saving the editing form.
-            $options->showunits = $question->unitrole;
-            if ($question->unitrole == self::UNITGRADED) {
-                $options->unitgradingtype = $question->unitgradingtypes;
-                $options->showunits = $question->multichoicedisplay;
-            }
-
-        } else if (isset($question->showunits)) {
-            // Updated import, e.g. Moodle XML.
-            $options->showunits = $question->showunits;
-            if (isset($question->unitgradingtype)) {
-                $options->unitgradingtype = $question->unitgradingtype;
+        // Add/update $options for this ddingroups question.
+        if ($options->id = $DB->get_field('qtype_ddingroups_options', 'id', ['questionid' => $question->id])) {
+            if (!$DB->update_record('qtype_ddingroups_options', $options)) {
+                $result->error = get_string('cannotupdaterecord', 'error', 'qtype_ddingroups_options (id='.$options->id.')');
+                return $result;
             }
         } else {
-            // Legacy import.
-            if ($defaultunit = $this->get_default_numerical_unit($question)) {
-                $options->showunits = self::UNITINPUT;
-            } else {
-                $options->showunits = self::UNITNONE;
+            unset($options->id);
+            if (!$options->id = $DB->insert_record('qtype_ddingroups_options', $options)) {
+                $result->error = get_string('cannotinsertrecord', 'error', 'qtype_ddingroups_options');
+                return $result;
             }
         }
 
-        $options->unitsleft = !empty($question->unitsleft);
-
-        $DB->update_record('question_numerical_options', $options);
-
-        // Report any problems.
-        if (!empty($result->notice)) {
-            return $result;
+        // Delete old answer records, if any.
+        if (count($answerids)) {
+            $fs = get_file_storage();
+            foreach ($answerids as $answerid) {
+                $fs->delete_area_files($context->id, 'question', 'answer', $answerid);
+                $DB->delete_records('question_answers', ['id' => $answerid]);
+            }
         }
 
         return true;
     }
 
-    public function save_units($question) {
-        global $DB;
-        $result = new stdClass();
+    public function get_possible_responses($questiondata): array {
+        $responseclasses = [];
+        $itemcount = count($questiondata->options->answers);
 
-        // Delete the units previously saved for this question.
-        $DB->delete_records('question_numerical_units', array('question' => $question->id));
-
-        // Nothing to do.
-        if (!isset($question->multiplier)) {
-            $result->units = array();
-            return $result;
-        }
-
-        // Save the new units.
-        $units = array();
-        $unitalreadyinsert = array();
-        foreach ($question->multiplier as $i => $multiplier) {
-            // Discard any unit which doesn't specify the unit or the multiplier.
-            if (!empty($question->multiplier[$i]) && !empty($question->unit[$i]) &&
-                    !array_key_exists($question->unit[$i], $unitalreadyinsert)) {
-                $unitalreadyinsert[$question->unit[$i]] = 1;
-                $units[$i] = new stdClass();
-                $units[$i]->question = $question->id;
-                $units[$i]->multiplier = $this->apply_unit($question->multiplier[$i],
-                        array(), false);
-                $units[$i]->unit = $question->unit[$i];
-                $DB->insert_record('question_numerical_units', $units[$i]);
+        $position = 0;
+        foreach ($questiondata->options->answers as $answer) {
+            $position += 1;
+            $classes = [];
+            for ($i = 1; $i <= $itemcount; $i++) {
+                $classes[$i] = new question_possible_response(
+                    get_string('positionx', 'qtype_ddingroups', $i),
+                    ($i === $position) / $itemcount);
             }
+
+            $subqid = question_utils::to_plain_text($answer->answer, $answer->answerformat);
+            $subqid = core_text::substr($subqid, 0, 100); // Ensure not more than 100 chars.
+            $responseclasses[$subqid] = $classes;
         }
-        unset($question->multiplier, $question->unit);
-
-        $result->units = &$units;
-        return $result;
+        return $responseclasses;
     }
-
-    protected function initialise_question_instance(question_definition $question, $questiondata) {
-        parent::initialise_question_instance($question, $questiondata);
-        $this->initialise_numerical_answers($question, $questiondata);
-        $question->unitdisplay = $questiondata->options->showunits;
-        $question->unitgradingtype = $questiondata->options->unitgradingtype;
-        $question->unitpenalty = $questiondata->options->unitpenalty;
-        $question->unitsleft = $questiondata->options->unitsleft;
-        $question->ap = $this->make_answer_processor($questiondata->options->units,
-                $questiondata->options->unitsleft);
-    }
-
-    public function initialise_numerical_answers(question_definition $question, $questiondata) {
-        $question->answers = array();
-        if (empty($questiondata->options->answers)) {
-            return;
-        }
-        foreach ($questiondata->options->answers as $a) {
-            $question->answers[$a->id] = new qtype_numerical_answer($a->id, $a->answer,
-                    $a->fraction, $a->feedback, $a->feedbackformat, $a->tolerance);
-        }
-    }
-
-    public function make_answer_processor($units, $unitsleft) {
-        if (empty($units)) {
-            return new qtype_numerical_answer_processor(array());
-        }
-
-        $cleanedunits = array();
-        foreach ($units as $unit) {
-            $cleanedunits[$unit->unit] = $unit->multiplier;
-        }
-
-        return new qtype_numerical_answer_processor($cleanedunits, $unitsleft);
-    }
-
-    public function delete_question($questionid, $contextid) {
-        global $DB;
-        $DB->delete_records('question_numerical', array('question' => $questionid));
-        $DB->delete_records('question_numerical_options', array('question' => $questionid));
-        $DB->delete_records('question_numerical_units', array('question' => $questionid));
-
-        parent::delete_question($questionid, $contextid);
-    }
-
-    public function get_random_guess_score($questiondata) {
-        foreach ($questiondata->options->answers as $aid => $answer) {
-            if ('*' == trim($answer->answer)) {
-                return max($answer->fraction - $questiondata->options->unitpenalty, 0);
-            }
-        }
-        return 0;
-    }
-
     /**
-     * Add a unit to a response for display.
-     * @param object $questiondata the data defining the quetsion.
-     * @param string $answer a response.
-     * @param object $unit a unit. If null, {@link get_default_numerical_unit()}
-     * is used.
-     */
-    public function add_unit($questiondata, $answer, $unit = null) {
-        if (is_null($unit)) {
-            $unit = $this->get_default_numerical_unit($questiondata);
-        }
-
-        if (!$unit) {
-            return $answer;
-        }
-
-        if (!empty($questiondata->options->unitsleft)) {
-            return $unit->unit . ' ' . $answer;
-        } else {
-            return $answer . ' ' . $unit->unit;
-        }
-    }
-
-    public function get_possible_responses($questiondata) {
-        $responses = array();
-
-        $unit = $this->get_default_numerical_unit($questiondata);
-
-        $starfound = false;
-        foreach ($questiondata->options->answers as $aid => $answer) {
-            $responseclass = $answer->answer;
-
-            if ($responseclass === '*') {
-                $starfound = true;
-            } else {
-                $responseclass = $this->add_unit($questiondata, $responseclass, $unit);
-
-                $ans = new qtype_numerical_answer($answer->id, $answer->answer, $answer->fraction,
-                        $answer->feedback, $answer->feedbackformat, $answer->tolerance);
-                list($min, $max) = $ans->get_tolerance_interval();
-                $responseclass .= " ({$min}..{$max})";
-            }
-
-            $responses[$aid] = new question_possible_response($responseclass,
-                    $answer->fraction);
-        }
-
-        if (!$starfound) {
-            $responses[0] = new question_possible_response(
-                    get_string('didnotmatchanyanswer', 'question'), 0);
-        }
-
-        $responses[null] = question_possible_response::no_response();
-
-        return array($questiondata->id => $responses);
-    }
-
-    /**
-     * Checks if the $rawresponse has a unit and applys it if appropriate.
+     * Callback function for filtering answers with array_filter
      *
-     * @param string $rawresponse  The response string to be converted to a float.
-     * @param array $units         An array with the defined units, where the
-     *                             unit is the key and the multiplier the value.
-     * @return float               The rawresponse with the unit taken into
-     *                             account as a float.
+     * @param mixed $value
+     * @return bool If true, this item should be saved.
      */
-    public function apply_unit($rawresponse, $units, $unitsleft) {
-        $ap = $this->make_answer_processor($units, $unitsleft);
-        list($value, $unit, $multiplier) = $ap->apply_units($rawresponse);
-        if (!is_null($multiplier)) {
-            $value *= $multiplier;
+    public function is_not_blank(mixed $value): bool {
+        if (is_array($value)) {
+            $value = $value['text'];
         }
-        return $value;
+        $value = trim($value);
+        return ($value || $value === '0');
     }
 
-    public function move_files($questionid, $oldcontextid, $newcontextid) {
-        $fs = get_file_storage();
-
-        parent::move_files($questionid, $oldcontextid, $newcontextid);
-        $this->move_files_in_answers($questionid, $oldcontextid, $newcontextid);
-        $this->move_files_in_hints($questionid, $oldcontextid, $newcontextid);
-    }
-
-    protected function delete_files($questionid, $contextid) {
-        $fs = get_file_storage();
-
-        parent::delete_files($questionid, $contextid);
-        $this->delete_files_in_answers($questionid, $contextid);
-        $this->delete_files_in_hints($questionid, $contextid);
-    }
-}
-
-
-/**
- * This class processes numbers with units.
- *
- * @copyright 2010 The Open University
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class qtype_numerical_answer_processor {
-    /** @var array unit name => multiplier. */
-    protected $units;
-    /** @var string character used as decimal point. */
-    protected $decsep;
-    /** @var string character used as thousands separator. */
-    protected $thousandssep;
-    /** @var boolean whether the units come before or after the number. */
-    protected $unitsbefore;
-
-    protected $regex = null;
-
-    public function __construct($units, $unitsbefore = false, $decsep = null,
-            $thousandssep = null) {
-        if (is_null($decsep)) {
-            $decsep = get_string('decsep', 'langconfig');
+    public function get_question_options($question): bool {
+        global $DB, $OUTPUT;
+        // Load the options.
+        if (!$question->options = $DB->get_record('qtype_ddingroups_options', ['questionid' => $question->id])) {
+            echo $OUTPUT->notification('Error: Missing question options!');
+            return false;
         }
-        $this->decsep = $decsep;
-
-        if (is_null($thousandssep)) {
-            $thousandssep = get_string('thousandssep', 'langconfig');
-        }
-        $this->thousandssep = $thousandssep;
-
-        $this->units = $units;
-        $this->unitsbefore = $unitsbefore;
-    }
-
-    /**
-     * Set the decimal point and thousands separator character that should be used.
-     * @param string $decsep
-     * @param string $thousandssep
-     */
-    public function set_characters($decsep, $thousandssep) {
-        $this->decsep = $decsep;
-        $this->thousandssep = $thousandssep;
-        $this->regex = null;
-    }
-
-    /** @return string the decimal point character used. */
-    public function get_point() {
-        return $this->decsep;
-    }
-
-    /** @return string the thousands separator character used. */
-    public function get_separator() {
-        return $this->thousandssep;
-    }
-
-    /**
-     * @return bool If the student's response contains a '.' or a ',' that
-     * matches the thousands separator in the current locale. In this case, the
-     * parsing in apply_unit can give a result that the student did not expect.
-     */
-    public function contains_thousands_seaparator($value) {
-        if (!in_array($this->thousandssep, array('.', ','))) {
+        // Load the answers - "fraction" is used to signify the order of the answers,
+        // with id as a tie-break which should not be required.
+        if (!$question->options->answers = $DB->get_records('question_answers',
+                ['question' => $question->id], 'fraction, id')) {
+            echo $OUTPUT->notification('Error: Missing question answers for ddingroups question ' . $question->id . '!');
             return false;
         }
 
-        return strpos($value, $this->thousandssep) !== false;
+        parent::get_question_options($question);
+        return true;
     }
 
-    /**
-     * Create the regular expression that {@link parse_response()} requires.
-     * @return string
-     */
-    protected function build_regex() {
-        if (!is_null($this->regex)) {
-            return $this->regex;
-        }
-
-        $decsep = preg_quote($this->decsep, '/');
-        $thousandssep = preg_quote($this->thousandssep, '/');
-        $beforepointre = '([+-]?[' . $thousandssep . '\d]*)';
-        $decimalsre = $decsep . '(\d*)';
-        $exponentre = '(?:e|E|(?:x|\*|×)10(?:\^|\*\*))([+-]?\d+)';
-
-        $numberbit = "{$beforepointre}(?:{$decimalsre})?(?:{$exponentre})?";
-
-        if ($this->unitsbefore) {
-            $this->regex = "/{$numberbit}$/";
-        } else {
-            $this->regex = "/^{$numberbit}/";
-        }
-        return $this->regex;
+    public function delete_question($questionid, $contextid): void {
+        global $DB;
+        $DB->delete_records('qtype_ddingroups_options', ['questionid' => $questionid]);
+        parent::delete_question($questionid, $contextid);
     }
-
     /**
-     * This method can be used for more locale-strict parsing of repsonses. At the
-     * moment we don't use it, and instead use the more lax parsing in apply_units.
-     * This is just a note that this funciton was used in the past, so if you are
-     * intersted, look through version control history.
+     * Import question from GIFT format
      *
-     * Take a string which is a number with or without a decimal point and exponent,
-     * and possibly followed by one of the units, and split it into bits.
-     * @param string $response a value, optionally with a unit.
-     * @return array four strings (some of which may be blank) the digits before
-     * and after the decimal point, the exponent, and the unit. All four will be
-     * null if the response cannot be parsed.
+     * @param array $lines
+     * @param stdClass|null $question
+     * @param qformat_gift $format
+     * @param string|null $extra (optional, default=null)
+     * @return stdClass|bool Question instance
      */
-    protected function parse_response($response) {
-        if (!preg_match($this->build_regex(), $response, $matches)) {
-            return array(null, null, null, null);
+    public function import_from_gift(array $lines, ?stdClass $question, qformat_gift $format, ?string $extra = null): bool|stdClass {
+        global $CFG;
+        require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
+
+        // Extract question info from GIFT file $lines.
+        $gradingtype = '(?:ABSOLUTE_POSITION|'.
+            'ABSOLUTE|ABS|'.
+            'RELATIVE_TO_CORRECT|'.
+            'RELATIVE|REL)?';
+        $showgrading = '(?:SHOW|TRUE|YES|1|HIDE|FALSE|NO|0)?';
+        $search = 
+            '('.$gradingtype.')\s*'.
+            '('.$showgrading.')\s*'.
+            '(.*?)\s*$/s';
+        // Item $1 the number of items to be shown.
+        // Item $2 the extraction/grading type.
+        // Item $3 the layout type.
+        // Item $4 the grading type.
+        // Item $5 show the grading details (SHOW/HIDE).
+        // Item $6 the numbering style (none/123/abc/...).
+        // Item $7 the lines of items to be ordered.
+        if (!$extra) {
+            return false; // Format not recognized.
+        }
+        if (!preg_match($search, $extra, $matches)) {
+            return false; // Format not recognized.
+        }
+        $gradingtype = trim($matches[1]);
+        $showgrading = trim($matches[2]);
+
+        $answers = preg_split('/[\r\n]+/', $matches[7]);
+        $answers = array_filter($answers);
+
+        if (empty($question)) {
+            $text = implode(PHP_EOL, $lines);
+            $text = trim($text);
+            if ($pos = strpos($text, '{')) {
+                $text = substr($text, 0, $pos);
+            }
+
+            // Extract name.
+            $name = false;
+            if (str_starts_with($text, '::')) {
+                $text = substr($text, 2);
+                $pos = strpos($text, '::');
+                if (is_numeric($pos)) {
+                    $name = substr($text, 0, $pos);
+                    $name = $format->clean_question_name($name);
+                    $text = trim(substr($text, $pos + 2));
+                }
+            }
+
+            // Extract question text format.
+            $format = FORMAT_MOODLE;
+            if (str_starts_with($text, '[')) {
+                $text = substr($text, 1);
+                $pos = strpos($text, ']');
+                if (is_numeric($pos)) {
+                    $format = substr($text, 0, $pos);
+                    switch ($format) {
+                        case 'html':
+                            $format = FORMAT_HTML;
+                            break;
+                        case 'plain':
+                            $format = FORMAT_PLAIN;
+                            break;
+                        case 'markdown':
+                            $format = FORMAT_MARKDOWN;
+                            break;
+                        case 'moodle':
+                            $format = FORMAT_MOODLE;
+                            break;
+                    }
+                    $text = trim(substr($text, $pos + 1)); // Remove name from text.
+                }
+            }
+
+            $question = new stdClass();
+            $question->name = $name;
+            $question->questiontext = $text;
+            $question->questiontextformat = $format;
+            $question->generalfeedback = '';
+            $question->generalfeedbackformat = FORMAT_MOODLE;
         }
 
-        $matches += array('', '', '', ''); // Fill in any missing matches.
-        list($matchedpart, $beforepoint, $decimals, $exponent) = $matches;
+        $question->qtype = 'ddingroups';
 
-        // Strip out thousands separators.
-        $beforepoint = str_replace($this->thousandssep, '', $beforepoint);
+        
+        $this->set_options_for_import($question,  $gradingtype
+            $showgrading);
 
-        // Must be either something before, or something after the decimal point.
-        // (The only way to do this in the regex would make it much more complicated.)
-        if ($beforepoint === '' && $decimals === '') {
-            return array(null, null, null, null);
+        // Remove blank items.
+        $answers = array_map('trim', $answers);
+        $answers = array_filter($answers); // Remove blanks.
+
+        // Set up answer arrays.
+        $question->answer = [];
+        $question->answerformat = [];
+        $question->fraction = [];
+        $question->feedback = [];
+        $question->feedbackformat = [];
+
+        // Note that "fraction" field is used to denote sort order
+        // "fraction" fields will be set to correct values later
+        // in the save_question_options() method of this class.
+
+        foreach ($answers as $i => $answer) {
+            $question->answer[$i] = $answer;
+            $question->answerformat[$i] = FORMAT_MOODLE;
+            $question->fraction[$i] = 1; // Will be reset later in save_question_options().
+            $question->feedback[$i] = '';
+            $question->feedbackformat[$i] = FORMAT_MOODLE;
         }
-
-        if ($this->unitsbefore) {
-            $unit = substr($response, 0, -strlen($matchedpart));
-        } else {
-            $unit = substr($response, strlen($matchedpart));
-        }
-        $unit = trim($unit);
-
-        return array($beforepoint, $decimals, $exponent, $unit);
-    }
-
-    /**
-     * Takes a number in almost any localised form, and possibly with a unit
-     * after it. It separates off the unit, if present, and converts to the
-     * default unit, by using the given unit multiplier.
+        return $question;
+    }/**
+     * Given question object, returns array with array layouttype, selecttype, selectcount, gradingtype, showgrading
+     * where layouttype, selecttype, gradingtype and showgrading are string representations.
      *
-     * @param string $response a value, optionally with a unit.
-     * @return array(numeric, string, multiplier) the value with the unit stripped, and normalised
-     *      by the unit multiplier, if any, and the unit string, for reference.
+     * @param stdClass $question
+     * @return array(layouttype, selecttype, selectcount, gradingtype, $showgrading, $numberingstyle)
      */
-    public function apply_units($response, $separateunit = null): array {
-        if ($response === null || trim($response) === '') {
-            return [null, null, null];
+    public function extract_options_for_export(stdClass $question): array {
+        $gradingtype = match ($question->options->gradingtype) {
+            qtype_ordering_question::GRADING_ABSOLUTE_POSITION => 'ABSOLUTE_POSITION',
+            qtype_ordering_question::GRADING_RELATIVE_TO_CORRECT => 'RELATIVE_TO_CORRECT',
+            default => '', // Shouldn't happen !!
+        };
+        $showgrading = match ($question->options->showgrading) {
+            0 => 'HIDE',
+            1 => 'SHOW',
+            default => '', // Shouldn't happen !!
+        };
+        return [ $gradingtype, $showgrading];
+    }/**
+     * Exports question to GIFT format
+     *
+     * @param stdClass $question
+     * @param qformat_gift $format
+     * @param string|null $extra (optional, default=null)
+     * @return string GIFT representation of question
+     */
+    public function export_to_gift(stdClass $question, qformat_gift $format, ?string $extra = null): string {
+        global $CFG;
+        require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
+
+        $output = '';
+
+        if ($question->name) {
+            $output .= '::'.$question->name.'::';
         }
 
-        // Strip spaces (which may be thousands separators) and change other forms
-        // of writing e to e.
-        $response = str_replace(' ', '', $response);
-        $response = preg_replace('~(?:e|E|(?:x|\*|×)10(?:\^|\*\*))([+-]?\d+)~', 'e$1', $response);
+        $output .= match ($question->questiontextformat) {
+            FORMAT_HTML => '[html]',
+            FORMAT_PLAIN => '[plain]',
+            FORMAT_MARKDOWN => '[markdown]',
+            FORMAT_MOODLE => '[moodle]',
+            default => '',
+        };
 
-        // If a . is present or there are multiple , (i.e. 2,456,789 ) assume ,
-        // is a thouseands separator, and strip it, else assume it is a decimal
-        // separator, and change it to ..
-        if (strpos($response, '.') !== false || substr_count($response, ',') > 1) {
-            $response = str_replace(',', '', $response);
-        } else {
-            $response = str_replace([$this->thousandssep, $this->decsep, ','], ['', '.', '.'], $response);
+        $output .= $question->questiontext.'{';
+
+        list($gradingtype,$showgrading) =
+            $this->extract_options_for_export($question);
+        $output .= ">$gradingtype $showgrading ".PHP_EOL;
+
+        foreach ($question->options->answers as $answer) {
+            $output .= $answer->answer.PHP_EOL;
         }
 
-        $regex = '[+-]?(?:\d+(?:\\.\d*)?|\\.\d+)(?:e[-+]?\d+)?';
-        if ($this->unitsbefore) {
-            $regex = "/{$regex}$/";
-        } else {
-            $regex = "/^{$regex}/";
+        $output .= '}';
+        return $output;
+    }
+
+    public function export_to_xml($question, qformat_xml $format, $extra = null): string {
+        global $CFG;
+        require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
+
+        list($gradingtype,$showgrading) =
+            $this->extract_options_for_export($question);
+
+        $output = '';
+        $output .= "    <gradingtype>$gradingtype</gradingtype>\n";
+        $output .= "    <showgrading>$showgrading</showgrading>\n";
+        $output .= $format->write_combined_feedback($question->options, $question->id, $question->contextid);
+
+        $shownumcorrect = $question->options->shownumcorrect;
+        if (!empty($question->options->shownumcorrect)) {
+            $output = str_replace("    <shownumcorrect/>\n", "", $output);
         }
-        if (!preg_match($regex, $response, $matches)) {
-            return array(null, null, null);
+        $output .= "    <shownumcorrect>$shownumcorrect</shownumcorrect>\n";
+
+        foreach ($question->options->answers as $answer) {
+            $output .= '    <answer fraction="'.$answer->fraction.'" '.$format->format($answer->answerformat).">\n";
+            $output .= $format->writetext($answer->answer, 3);
+            if (trim($answer->feedback)) { // Usually there is no feedback.
+                $output .= '      <feedback '.$format->format($answer->feedbackformat).">\n";
+                $output .= $format->writetext($answer->feedback, 4);
+                $output .= $format->write_files($answer->feedbackfiles);
+                $output .= "      </feedback>\n";
+            }
+            $output .= "    </answer>\n";
         }
 
-        $numberstring = $matches[0];
-        if ($this->unitsbefore) {
-            // Substr returns false when it means '', so cast back to string.
-            $unit = (string) substr($response, 0, -strlen($numberstring));
-        } else {
-            $unit = (string) substr($response, strlen($numberstring));
+        return $output;
+    }
+
+    public function import_from_xml($data, $question, qformat_xml $format, $extra = null): object|bool {
+        global $CFG;
+        require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
+
+        $questiontype = $format->getpath($data, ['@', 'type'], '');
+
+        if ($questiontype != 'ddingroups') {
+            return false;
         }
 
-        if (!is_null($separateunit)) {
-            $unit = $separateunit;
+        $newquestion = $format->import_headers($data);
+        $newquestion->qtype = $questiontype;
+
+        // Extra fields - "selecttype" and "selectcount"
+        // (these fields used to be called "logical" and "studentsee").
+        $gradingtype = $format->getpath($data, ['#', 'gradingtype', 0, '#'], 'RELATIVE');
+        $showgrading = $format->getpath($data, ['#', 'showgrading', 0, '#'], '1');
+        $this->set_options_for_import($newquestion,
+             $showgrading);
+
+        $newquestion->answer = [];
+        $newquestion->answerformat = [];
+        $newquestion->fraction = [];
+        $newquestion->feedback = [];
+        $newquestion->feedbackformat = [];
+
+        $i = 0;
+        while ($answer = $format->getpath($data, ['#', 'answer', $i], '')) {
+            $ans = $format->import_answer($answer, true, $format->get_format($newquestion->questiontextformat));
+            $newquestion->answer[$i] = $ans->answer;
+            $newquestion->fraction[$i] = 1; // Will be reset later in save_question_options().
+            $newquestion->feedback[$i] = $ans->feedback;
+            $i++;
         }
 
-        if ($this->is_known_unit($unit)) {
-            $multiplier = 1 / $this->units[$unit];
-        } else {
-            $multiplier = null;
+        $format->import_combined_feedback($newquestion, $data);
+        $newquestion->shownumcorrect = $format->getpath($data, ['#', 'shownumcorrect', 0, '#'], null);
+
+       
+
+        if (!isset($newquestion->shownumcorrect)) {
+            $newquestion->shownumcorrect = 1;
         }
 
-        return array($numberstring + 0, $unit, $multiplier); // The + 0 is to convert to number.
+        return $newquestion;
     }
 
     /**
-     * @return string the default unit.
+     * Set layouttype, selecttype, selectcount, gradingtype, showgrading based on their textual representation
+     *
+     * @param stdClass $question the question object
+     * @param string $showgrading the grading details or not
      */
-    public function get_default_unit() {
-        reset($this->units);
-        return key($this->units);
-    }
+    public function set_options_for_import(stdClass $question, 
+           string $showgrading, string $gradingtype): void {
+            $question->gradingtype = match (strtoupper($gradingtype)) {
+                'ABS', 'ABSOLUTE', 'ABSOLUTE_POSITION' => qtype_ordering_question::GRADING_ABSOLUTE_POSITION,
+                'RELATIVE_TO_CORRECT' => qtype_ordering_question::GRADING_RELATIVE_TO_CORRECT,
+                default => qtype_ordering_question::GRADING_RELATIVE_NEXT_EXCLUDE_LAST,
+            };
+        // Set "showgrading" option.
+        $question->showgrading = match (strtoupper($showgrading)) {
+            'HIDE', 'FALSE', 'NO' => 0,
+            default => 1,
+        };
 
-    /**
-     * @param string $answer a response.
-     * @param string $unit a unit.
-     */
-    public function add_unit($answer, $unit = null) {
-        if (is_null($unit)) {
-            $unit = $this->get_default_unit();
-        }
-
-        if (!$unit) {
-            return $answer;
-        }
-
-        if ($this->unitsbefore) {
-            return $unit . ' ' . $answer;
-        } else {
-            return $answer . ' ' . $unit;
-        }
-    }
-
-    /**
-     * Is this unit recognised.
-     * @param string $unit the unit
-     * @return bool whether this is a unit we recognise.
-     */
-    public function is_known_unit($unit) {
-        return array_key_exists($unit, $this->units);
-    }
-
-    /**
-     * Whether the units go before or after the number.
-     * @return true = before, false = after.
-     */
-    public function are_units_before() {
-        return $this->unitsbefore;
-    }
-
-    /**
-     * Get the units as an array suitably for passing to html_writer::select.
-     * @return array of unit choices.
-     */
-    public function get_unit_options() {
-        $options = array();
-        foreach ($this->units as $unit => $notused) {
-            $options[$unit] = $unit;
-        }
-        return $options;
+        
     }
 }
