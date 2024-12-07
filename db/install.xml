@@ -10,7 +10,6 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Ссылка на ID вопроса в таблице question"/>
         <FIELD NAME="groupcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="2" SEQUENCE="false" COMMENT="Количество групп, куда можно перетаскивать элементы"/>
-        <FIELD NAME="sequencecheck" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Проверка последовательности: 0 - четкая, 1 - нечеткая"/>
         <FIELD NAME="correctfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Обратная связь для правильного ответа"/>
         <FIELD NAME="correctfeedbackformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="incorrectfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Обратная связь для неправильного ответа"/>
@@ -31,8 +30,7 @@
         <FIELD NAME="content" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Содержимое элемента для перетаскивания"/>
         <FIELD NAME="contentformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Формат содержимого (например, HTML)"/>
         <FIELD NAME="groupid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Идентификатор группы, в которую элемент должен быть помещен"/>
-        <FIELD NAME="sortorder" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Порядок сортировки элементов"/>
-        <FIELD NAME="sequencecheck" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="0 - четкая последовательность, 1 - допускаются вариации"/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="4" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Порядок сортировки элементов (может быть пустым)"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Первичный ключ для qtype_ddingroups_items"/>
