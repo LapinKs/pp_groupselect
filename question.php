@@ -15,13 +15,13 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Represents an ordering question.
+ * Represents an ddingroups question.
  *
- * @package    qtype_ordering
+ * @package    qtype_ddingroups
  * @copyright  2013 Gordon Bateson (gordon.bateson@gmail.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class qtype_ordering_question extends question_graded_automatically {
+class qtype_ddingroups_question extends question_graded_automatically {
 
     /** Select all answers */
     const SELECT_ALL = 0;
@@ -60,7 +60,7 @@ class qtype_ordering_question extends question_graded_automatically {
     /** @var string How to number the items. A key from the array returned by {@see get_numbering_styles()}. */
     public $numberingstyle;
 
-    // Fields from "qtype_ordering_options" table.
+    // Fields from "qtype_ddingroups_options" table.
     /** @var string */
     public $correctfeedback;
     /** @var int */
@@ -117,7 +117,7 @@ class qtype_ordering_question extends question_graded_automatically {
         }
 
         if (count($this->answers) != count($otherversion->answers)) {
-            return get_string('regradeissuenumitemschanged', 'qtype_ordering');
+            return get_string('regradeissuenumitemschanged', 'qtype_ddingroups');
         }
 
         return null;
@@ -212,7 +212,7 @@ class qtype_ordering_question extends question_graded_automatically {
 
             $classifiedresponse[$subqid] = new question_classified_response(
                 $currentposition + 1,
-                get_string('positionx', 'qtype_ordering', $currentposition + 1),
+                get_string('positionx', 'qtype_ddingroups', $currentposition + 1),
                 ($currentposition == $position) * $fraction
             );
         }
@@ -452,7 +452,7 @@ class qtype_ordering_question extends question_graded_automatically {
     }
 
     public static function get_grading_types(?int $type = null): array|string {
-        $plugin = 'qtype_ordering';
+        $plugin = 'qtype_ddingroups';
         $types = [
             self::GRADING_ALL_OR_NOTHING => get_string('allornothing', $plugin),
             self::GRADING_ABSOLUTE_POSITION => get_string('absoluteposition', $plugin),
@@ -676,7 +676,7 @@ class qtype_ordering_question extends question_graded_automatically {
      * @param int $answerid The answerid of the current response.
      * @return array (score, maxscore, fraction, percent, class)
      */
-    public function get_ordering_item_score(question_definition $question, int $position, int $answerid): array {
+    public function get_ddingroups_item_score(question_definition $question, int $position, int $answerid): array {
 
         if (!isset($this->itemscores[$position])) {
 
