@@ -13,7 +13,7 @@ class qtype_ddingroups extends question_type {
 
     public function extra_question_fields(): array {
         return [
-            'qtype_ddingroups_options','gradingtype', 'showgrading',
+            'qtype_ddingroups_options','groupcount','gradingtype', 'showgrading',
         ];
     }
 
@@ -32,6 +32,7 @@ class qtype_ddingroups extends question_type {
 
     public function save_defaults_for_new_questions(stdClass $fromform): void {
         parent::save_defaults_for_new_questions($fromform);
+        $this->set_default_value('groupcount', $fromform->groupcount);
         $this->set_default_value('gradingtype', $fromform->gradingtype);
         $this->set_default_value('showgrading', $fromform->showgrading);
     }
@@ -144,6 +145,7 @@ class qtype_ddingroups extends question_type {
         // Create $options for this ddingroups question.
         $options = (object) [
             'questionid' => $question->id,
+            'groupcount' =>$question->groupcount,
             'gradingtype' => $question->gradingtype,
             'showgrading' => $question->showgrading,
         ];
@@ -248,12 +250,14 @@ class qtype_ddingroups extends question_type {
         require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
 
         // Extract question info from GIFT file $lines.
+        $groupcount = '\d+';
         $gradingtype = '(?:ABSOLUTE_POSITION|'.
             'ABSOLUTE|ABS|'.
             'RELATIVE_TO_CORRECT|'.
             'RELATIVE|REL)?';
         $showgrading = '(?:SHOW|TRUE|YES|1|HIDE|FALSE|NO|0)?';
         $search = 
+            '('.$groupcount.')\s*'.
             '('.$gradingtype.')\s*'.
             '('.$showgrading.')\s*'.
             '(.*?)\s*$/s';
@@ -270,10 +274,11 @@ class qtype_ddingroups extends question_type {
         if (!preg_match($search, $extra, $matches)) {
             return false; // Format not recognized.
         }
-        $gradingtype = trim($matches[1]);
-        $showgrading = trim($matches[2]);
+        $groupcount = trim($matches[1]);
+        $gradingtype = trim($matches[2]);
+        $showgrading = trim($matches[3]);
 
-        $answers = preg_split('/[\r\n]+/', $matches[7]);
+        $answers = preg_split('/[\r\n]+/', $matches[4]);
         $answers = array_filter($answers);
 
         if (empty($question)) {
@@ -330,9 +335,13 @@ class qtype_ddingroups extends question_type {
 
         $question->qtype = 'ddingroups';
 
-        
-        $this->set_options_for_import($question,  $gradingtype
-            $showgrading);
+        if (is_numeric($groupcount) && $groupcount >= 2) {
+            $question->groupcount = intval($groupcount);
+        } else {
+            $question->groupcount = 2 ; // Default!
+        }
+        $this->set_options_for_import($question, $groupcount,  
+            $showgrading, $gradingtype);
 
         // Remove blank items.
         $answers = array_map('trim', $answers);
@@ -358,11 +367,11 @@ class qtype_ddingroups extends question_type {
         }
         return $question;
     }/**
-     * Given question object, returns array with array layouttype, selecttype, selectcount, gradingtype, showgrading
+     * Given question object, returns array with array layouttype, selecttype, groupcount, gradingtype, showgrading
      * where layouttype, selecttype, gradingtype and showgrading are string representations.
      *
      * @param stdClass $question
-     * @return array(layouttype, selecttype, selectcount, gradingtype, $showgrading, $numberingstyle)
+     * @return array(layouttype, selecttype, groupcount, gradingtype, $showgrading, $numberingstyle)
      */
     public function extract_options_for_export(stdClass $question): array {
         $gradingtype = match ($question->options->gradingtype) {
@@ -375,7 +384,8 @@ class qtype_ddingroups extends question_type {
             1 => 'SHOW',
             default => '', // Shouldn't happen !!
         };
-        return [ $gradingtype, $showgrading];
+        $groupcount = $question->options->groupcount;
+        return [ $groupcount, $gradingtype, $showgrading];
     }/**
      * Exports question to GIFT format
      *
@@ -404,9 +414,9 @@ class qtype_ddingroups extends question_type {
 
         $output .= $question->questiontext.'{';
 
-        list($gradingtype,$showgrading) =
+        list($groupcount ,$gradingtype,$showgrading) =
             $this->extract_options_for_export($question);
-        $output .= ">$gradingtype $showgrading ".PHP_EOL;
+        $output .= ">$groupcount $gradingtype $showgrading ".PHP_EOL;
 
         foreach ($question->options->answers as $answer) {
             $output .= $answer->answer.PHP_EOL;
@@ -424,6 +434,7 @@ class qtype_ddingroups extends question_type {
             $this->extract_options_for_export($question);
 
         $output = '';
+        $output .= "    <groupcount>$groupcount</groupcount>\n";
         $output .= "    <gradingtype>$gradingtype</gradingtype>\n";
         $output .= "    <showgrading>$showgrading</showgrading>\n";
         $output .= $format->write_combined_feedback($question->options, $question->id, $question->contextid);
@@ -462,11 +473,12 @@ class qtype_ddingroups extends question_type {
         $newquestion = $format->import_headers($data);
         $newquestion->qtype = $questiontype;
 
-        // Extra fields - "selecttype" and "selectcount"
+        // Extra fields - "selecttype" and "groupcount"
         // (these fields used to be called "logical" and "studentsee").
+        $groupcount = $format->getpath($data, ['#', $groupcount, 0, '#'], 2);
         $gradingtype = $format->getpath($data, ['#', 'gradingtype', 0, '#'], 'RELATIVE');
         $showgrading = $format->getpath($data, ['#', 'showgrading', 0, '#'], '1');
-        $this->set_options_for_import($newquestion,
+        $this->set_options_for_import($newquestion,$groupcount,$gradingtype,
              $showgrading);
 
         $newquestion->answer = [];
@@ -497,17 +509,22 @@ class qtype_ddingroups extends question_type {
     }
 
     /**
-     * Set layouttype, selecttype, selectcount, gradingtype, showgrading based on their textual representation
+     * Set layouttype, selecttype, groupcount, gradingtype, showgrading based on their textual representation
      *
      * @param stdClass $question the question object
      * @param string $showgrading the grading details or not
      */
-    public function set_options_for_import(stdClass $question, 
+    public function set_options_for_import(stdClass $question, string $groupcount ,
            string $showgrading, string $gradingtype): void {
+            if (is_numeric($groupcount) && $groupcount >= 2) {
+                $question->groupcount = intval($groupcount);
+            } else {
+                $question->groupcount = 2 ; // Default!
+            }
             $question->gradingtype = match (strtoupper($gradingtype)) {
                 'ABS', 'ABSOLUTE', 'ABSOLUTE_POSITION' => qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION,
                 'RELATIVE_TO_CORRECT' => qtype_ddingroups_question::GRADING_RELATIVE_TO_CORRECT,
-                default => qtype_ddingroups_question::GRADING_RELATIVE_NEXT_EXCLUDE_LAST,
+                default => qtype_ddingroups_question::GRADING_RELATIVE_TO_CORRECT,
             };
         // Set "showgrading" option.
         $question->showgrading = match (strtoupper($showgrading)) {
