@@ -39,133 +39,102 @@ class qtype_ddingroups extends question_type {
 
     public function save_question_options($question): bool|stdClass {
         global $DB;
-
+    
         $result = new stdClass();
         $context = $question->context;
-
+    
         // Remove empty answers.
         $question->answer = array_filter($question->answer, [$this, 'is_not_blank']);
         $question->answer = array_values($question->answer); // Make keys sequential.
-
+    
         // Count how many answers we have.
         $countanswers = count($question->answer);
-
-        // Search/replace strings to reduce simple <p>...</p> to plain text.
-        $psearch = '/^\s*<p>\s*(.*?)(\s*<br\s*\/?>)*\s*<\/p>\s*$/';
-        $preplace = '$1';
-
-        // Search/replace strings to standardize vertical align of <img> tags.
-        $imgsearch = '/(<img[^>]*)\bvertical-align:\s*[a-zA-Z0-9_-]+([^>]*>)/';
-        $imgreplace = '$1'.'vertical-align:text-top'.'$2';
-
+    
         // Check at least two answers exist.
         if ($countanswers < 2) {
             $result->notice = get_string('notenoughanswers', 'qtype_ddingroups', '2');
             return $result;
         }
-
+    
+        // Prepare feedback placeholders.
         $question->feedback = range(1, $countanswers);
-
+    
         if ($answerids = $DB->get_records('question_answers', ['question' => $question->id], 'id ASC', 'id,question')) {
             $answerids = array_keys($answerids);
         } else {
             $answerids = [];
         }
-
+    
         // Insert all the new answers.
         foreach ($question->answer as $i => $answer) {
-            $answertext = '';
-            $answerformat = 0;
-            $answeritemid = null;
-
-            // Extract $answer fields.
-            if (is_string($answer)) {
-                // Import from file.
-                $answertext = $answer;
-            } else if (is_array($answer)) {
-                // Input from browser.
-                if (isset($answer['text'])) {
-                    $answertext = $answer['text'];
-                }
-                if (isset($answer['format'])) {
-                    $answerformat = $answer['format'];
-                }
-                if (isset($answer['itemid'])) {
-                    $answeritemid = $answer['itemid'];
-                }
-            }
-
-            // Reduce simple <p>...</p> to plain text.
-            if (substr_count($answertext, '<p>') == 1) {
-                $answertext = preg_replace($psearch, $preplace, $answertext);
-            }
-            $answertext = trim($answertext);
-
+            $answertext = $answer['text'] ?? '';
+            $answerformat = $answer['format'] ?? 0;
+            $answeritemid = $answer['itemid'] ?? null;
+    
             // Skip empty answers.
-            if ($answertext == '') {
+            if (trim($answertext) === '') {
                 continue;
             }
-
-            // Standardize vertical align of img tags.
-            $answertext = preg_replace($imgsearch, $imgreplace, $answertext);
-
+    
             // Prepare the $answer object.
             $answer = (object) [
                 'question' => $question->id,
-                'fraction' => ($i + 1), // Start at 1.
+                'fraction' => ($i + 1),
                 'answer' => $answertext,
                 'answerformat' => $answerformat,
                 'feedback' => '',
                 'feedbackformat' => FORMAT_MOODLE,
             ];
-
+    
             // Add/insert $answer into the database.
             if ($answer->id = array_shift($answerids)) {
-                if (!$DB->update_record('question_answers', $answer)) {
-                    $result->error = get_string('cannotupdaterecord', 'error', 'question_answers (id='.$answer->id.')');
-                    return $result;
-                }
+                $DB->update_record('question_answers', $answer);
             } else {
                 unset($answer->id);
-                if (!$answer->id = $DB->insert_record('question_answers', $answer)) {
-                    $result->error = get_string('cannotinsertrecord', 'error', 'question_answers');
-                    return $result;
-                }
+                $answer->id = $DB->insert_record('question_answers', $answer);
             }
-
+    
             // Copy files across from draft files area.
-            // Note: we must do this AFTER inserting the answer record
-            // because the answer id is used as the file's "itemid".
             if ($answeritemid) {
-                $answertext = file_save_draft_area_files($answeritemid, $context->id, 'question', 'answer', $answer->id,
-                    $this->fileoptions, $answertext);
+                $answertext = file_save_draft_area_files(
+                    $answeritemid, $context->id, 'question', 'answer', $answer->id,
+                    $this->fileoptions, $answertext
+                );
                 $DB->set_field('question_answers', 'answer', $answertext, ['id' => $answer->id]);
             }
+    
+            // Save drag items to qtype_ddingroups_items table.
+            if (!empty($question->dragitems)) {
+                foreach ($question->dragitems as $item) {
+                    $item->questionid = $question->id;
+    
+                    if (empty($item->id)) {
+                        $DB->insert_record('qtype_ddingroups_items', $item);
+                    } else {
+                        $DB->update_record('qtype_ddingroups_items', $item);
+                    }
+                }
+            }
         }
+    
         // Create $options for this ddingroups question.
         $options = (object) [
             'questionid' => $question->id,
-            'groupcount' =>$question->groupcount,
+            'groupcount' => $question->groupcount,
             'gradingtype' => $question->gradingtype,
             'showgrading' => $question->showgrading,
         ];
         $options = $this->save_combined_feedback_helper($options, $question, $context, true);
         $this->save_hints($question, true);
-
+    
         // Add/update $options for this ddingroups question.
         if ($options->id = $DB->get_field('qtype_ddingroups_options', 'id', ['questionid' => $question->id])) {
-            if (!$DB->update_record('qtype_ddingroups_options', $options)) {
-                $result->error = get_string('cannotupdaterecord', 'error', 'qtype_ddingroups_options (id='.$options->id.')');
-                return $result;
-            }
+            $DB->update_record('qtype_ddingroups_options', $options);
         } else {
             unset($options->id);
-            if (!$options->id = $DB->insert_record('qtype_ddingroups_options', $options)) {
-                $result->error = get_string('cannotinsertrecord', 'error', 'qtype_ddingroups_options');
-                return $result;
-            }
+            $DB->insert_record('qtype_ddingroups_options', $options);
         }
-
+    
         // Delete old answer records, if any.
         if (count($answerids)) {
             $fs = get_file_storage();
@@ -174,7 +143,7 @@ class qtype_ddingroups extends question_type {
                 $DB->delete_records('question_answers', ['id' => $answerid]);
             }
         }
-
+    
         return true;
     }
 
@@ -214,26 +183,35 @@ class qtype_ddingroups extends question_type {
 
     public function get_question_options($question): bool {
         global $DB, $OUTPUT;
+    
         // Load the options.
         if (!$question->options = $DB->get_record('qtype_ddingroups_options', ['questionid' => $question->id])) {
             echo $OUTPUT->notification('Error: Missing question options!');
             return false;
         }
-        // Load the answers - "fraction" is used to signify the order of the answers,
-        // with id as a tie-break which should not be required.
-        if (!$question->options->answers = $DB->get_records('question_answers',
-                ['question' => $question->id], 'fraction, id')) {
+    
+        // Load the answers.
+        if (!$question->options->answers = $DB->get_records('question_answers', ['question' => $question->id], 'fraction, id')) {
             echo $OUTPUT->notification('Error: Missing question answers for ddingroups question ' . $question->id . '!');
             return false;
         }
-
+    
+        // Load drag items.
+        $question->options->dragitems = $DB->get_records('qtype_ddingroups_items', ['questionid' => $question->id]);
+    
         parent::get_question_options($question);
         return true;
     }
 
     public function delete_question($questionid, $contextid): void {
         global $DB;
+    
+        // Delete associated options.
         $DB->delete_records('qtype_ddingroups_options', ['questionid' => $questionid]);
+    
+        // Delete drag items.
+        $DB->delete_records('qtype_ddingroups_items', ['questionid' => $questionid]);
+    
         parent::delete_question($questionid, $contextid);
     }
     /**
@@ -463,48 +441,45 @@ class qtype_ddingroups extends question_type {
     public function import_from_xml($data, $question, qformat_xml $format, $extra = null): object|bool {
         global $CFG;
         require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
-
+    
         $questiontype = $format->getpath($data, ['@', 'type'], '');
-
+    
         if ($questiontype != 'ddingroups') {
             return false;
         }
-
+    
         $newquestion = $format->import_headers($data);
         $newquestion->qtype = $questiontype;
-
-        // Extra fields - "selecttype" and "groupcount"
-        // (these fields used to be called "logical" and "studentsee").
-        $groupcount = $format->getpath($data, ['#', $groupcount, 0, '#'], 2);
+    
+        $groupcount = $format->getpath($data, ['#', 'groupcount', 0, '#'], 2);
         $gradingtype = $format->getpath($data, ['#', 'gradingtype', 0, '#'], 'RELATIVE');
         $showgrading = $format->getpath($data, ['#', 'showgrading', 0, '#'], '1');
-        $this->set_options_for_import($newquestion,$groupcount,$gradingtype,
-             $showgrading);
-
+        $this->set_options_for_import($newquestion, $groupcount, $gradingtype, $showgrading);
+    
         $newquestion->answer = [];
-        $newquestion->answerformat = [];
-        $newquestion->fraction = [];
-        $newquestion->feedback = [];
-        $newquestion->feedbackformat = [];
-
+        $newquestion->dragitems = [];
+    
         $i = 0;
         while ($answer = $format->getpath($data, ['#', 'answer', $i], '')) {
             $ans = $format->import_answer($answer, true, $format->get_format($newquestion->questiontextformat));
             $newquestion->answer[$i] = $ans->answer;
-            $newquestion->fraction[$i] = 1; // Will be reset later in save_question_options().
+            $newquestion->fraction[$i] = 1;
             $newquestion->feedback[$i] = $ans->feedback;
             $i++;
         }
-
-        $format->import_combined_feedback($newquestion, $data);
-        $newquestion->shownumcorrect = $format->getpath($data, ['#', 'shownumcorrect', 0, '#'], null);
-
-       
-
-        if (!isset($newquestion->shownumcorrect)) {
-            $newquestion->shownumcorrect = 1;
+    
+        $j = 0;
+        while ($dragitem = $format->getpath($data, ['#', 'dragitem', $j], '')) {
+            $item = (object) [
+                'content' => $dragitem['content'],
+                'groupid' => $dragitem['groupid'],
+            ];
+            $newquestion->dragitems[$j] = $item;
+            $j++;
         }
-
+    
+        $format->import_combined_feedback($newquestion, $data);
+    
         return $newquestion;
     }
 
