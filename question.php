@@ -31,9 +31,6 @@ class qtype_ddingroups_question extends question_graded_automatically {
     const SELECT_CONTIGUOUS = 2;
 
     /** Show answers in vertical list */
-    const LAYOUT_VERTICAL = 0;
-    /** Show answers in one horizontal line */
-    const LAYOUT_HORIZONTAL = 1;
 
     /** The minimum number of items to create a subset */
     const MIN_SUBSET_ITEMS = 2;
@@ -46,8 +43,6 @@ class qtype_ddingroups_question extends question_graded_automatically {
     /** @var int Every sequential pair in right order is graded (last pair is excluded) */
     const GRADING_RELATIVE_TO_CORRECT = 1;
 
-    /** @var int {@see LAYOUT_VERTICAL} or {@see LAYOUT_HORIZONTAL}. */
-    public $layouttype;
 
     /** @var int {@see SELECT_ALL}, {@see SELECT_RANDOM} or {@see SELECT_CONTIGUOUS}. */
 
@@ -297,9 +292,6 @@ class qtype_ddingroups_question extends question_graded_automatically {
             if (in_array($filearea, ['correctfeedback', 'partiallycorrectfeedback', 'incorrectfeedback'])) {
                 return $this->check_combined_feedback_file_access($qa, $options, $filearea, $args);
             }
-            if ($filearea == 'hint') {
-                return $this->check_hint_file_access($qa, $options, $args);
-            }
         }
         return parent::check_file_access($qa, $options, $component, $filearea, $args, $forcedownload);
     }
@@ -454,15 +446,8 @@ class qtype_ddingroups_question extends question_graded_automatically {
     public static function get_grading_types(?int $type = null): array|string {
         $plugin = 'qtype_ddingroups';
         $types = [
-            self::GRADING_ALL_OR_NOTHING => get_string('allornothing', $plugin),
             self::GRADING_ABSOLUTE_POSITION => get_string('absoluteposition', $plugin),
             self::GRADING_RELATIVE_TO_CORRECT => get_string('relativetocorrect', $plugin),
-            self::GRADING_RELATIVE_NEXT_EXCLUDE_LAST => get_string('relativenextexcludelast', $plugin),
-            self::GRADING_RELATIVE_NEXT_INCLUDE_LAST => get_string('relativenextincludelast', $plugin),
-            self::GRADING_RELATIVE_ONE_PREVIOUS_AND_NEXT => get_string('relativeonepreviousandnext', $plugin),
-            self::GRADING_RELATIVE_ALL_PREVIOUS_AND_NEXT => get_string('relativeallpreviousandnext', $plugin),
-            self::GRADING_LONGEST_ORDERED_SUBSET => get_string('longestorderedsubset', $plugin),
-            self::GRADING_LONGEST_CONTIGUOUS_SUBSET => get_string('longestcontiguoussubset', $plugin),
         ];
         return self::get_types($types, $type);
     }
