@@ -1,9 +1,5 @@
 <?php
 
-
-
-
-
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/question/type/edit_question_form.php');
@@ -27,47 +23,40 @@ class qtype_ddingroups_edit_form extends question_edit_form {
      * @param MoodleQuickForm $mform
      */
     public function definition_inner($mform): void {
-        // Add field for group count.
-        $mform->addElement('text', 'groupcount', get_string('groupcount', 'qtype_ddingroups'), ['size' => 2]);
-        $mform->setType('groupcount', PARAM_INT);
-        $mform->addHelpButton('groupcount', 'groupcount', 'qtype_ddingroups');
-        $mform->setDefault('groupcount', 2);
+      
+        $this->add_group_with_checkboxes($mform, 1);
 
-        // Add field for sequence check.
-        $sequenceoptions = [
-            0 => get_string('strictsequence', 'qtype_ddingroups'),
-            1 => get_string('loosequence', 'qtype_ddingroups'),
-        ];
-        $mform->addElement('select', 'sequencecheck', get_string('sequencecheck', 'qtype_ddingroups'), $sequenceoptions);
-        $mform->setDefault('sequencecheck', 0);
-        $mform->addHelpButton('sequencecheck', 'sequencecheck', 'qtype_ddingroups');
+        
+        $mform->addElement('button', 'addgroupbutton', get_string('addgroup', 'qtype_ddingroups'), [
+            'onclick' => 'M.qtype_ddingroups.add_new_group();'
+        ]);
 
-        // Add fields for feedback.
+
         $this->add_combined_feedback_fields(true);
-
-        // Add interactive settings.
         $this->add_interactive_settings(false, true);
 
-        // Define draggable items and groups.
-        $this->add_draggable_items_section($mform);
+
+        $PAGE->requires->js_call_amd('qtype_ddingroups/edit_form', 'init');
     }
 
     /**
-     * Add draggable items and groups.
+     * Add a group with a text field and a row of checkboxes.
      *
      * @param MoodleQuickForm $mform
+     * @param int $groupnumber
      */
-    protected function add_draggable_items_section($mform): void {
-        $mform->addElement('header', 'draggableitemsheader', get_string('draggableitems', 'qtype_ddingroups'));
-        $mform->setExpanded('draggableitemsheader', true);
+    protected function add_group_with_checkboxes($mform, int $groupnumber): void {
+        $groupname = get_string('groupname', 'qtype_ddingroups', $groupnumber);
 
-        $this->add_repeat_elements($mform, 'draggableitem', [
-            $mform->createElement('editor', 'text', get_string('draggableitem', 'qtype_ddingroups')),
-            $mform->createElement('select', 'group', get_string('group', 'qtype_ddingroups'), ['Group 1', 'Group 2']),
-        ], [
-            'text' => ['type' => PARAM_RAW],
-            'group' => ['type' => PARAM_INT],
-        ]);
+        
+        $mform->addElement('header', "groupheader_$groupnumber", $groupname);
+
+       
+        $mform->addElement('text', "groupname_$groupnumber", get_string('groupname', 'qtype_ddingroups'));
+        $mform->setType("groupname_$groupnumber", PARAM_TEXT);
+
+       
+        $mform->addElement('html', "<div id='checkboxes_container_$groupnumber' class='checkboxes-container'></div>");
     }
 
     /**
@@ -78,8 +67,14 @@ class qtype_ddingroups_edit_form extends question_edit_form {
      */
     public function data_preprocessing($question): stdClass {
         $question = parent::data_preprocessing($question);
-        $question->groupcount = $question->options->groupcount ?? 2;
-        $question->sequencecheck = $question->options->sequencecheck ?? 0;
+
+        
+        if (!empty($question->options->groups)) {
+            foreach ($question->options->groups as $groupnumber => $group) {
+                $question->{"groupname_$groupnumber"} = $group->name;
+                $question->{"checkboxes_$groupnumber"} = $group->checkboxes; 
+            }
+        }
 
         return $question;
     }
@@ -94,8 +89,9 @@ class qtype_ddingroups_edit_form extends question_edit_form {
     public function validation($data, $files): array {
         $errors = parent::validation($data, $files);
 
-        if ($data['groupcount'] < 2) {
-            $errors['groupcount'] = get_string('groupcounttooshort', 'qtype_ddingroups');
+        
+        if (empty($data['groupname_1'])) {
+            $errors['groupname_1'] = get_string('groupnamerequired', 'qtype_ddingroups');
         }
 
         return $errors;
