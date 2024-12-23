@@ -31,6 +31,9 @@ class qtype_ddingroups_question extends question_graded_automatically {
     const SELECT_CONTIGUOUS = 2;
 
     /** Show answers in vertical list */
+    const LAYOUT_VERTICAL = 0;
+    /** Show answers in one horizontal line */
+    const LAYOUT_HORIZONTAL = 1;
 
     /** The minimum number of items to create a subset */
     const MIN_SUBSET_ITEMS = 2;
@@ -43,6 +46,8 @@ class qtype_ddingroups_question extends question_graded_automatically {
     /** @var int Every sequential pair in right order is graded (last pair is excluded) */
     const GRADING_RELATIVE_TO_CORRECT = 1;
 
+    /** @var int {@see LAYOUT_VERTICAL} or {@see LAYOUT_HORIZONTAL}. */
+    public $layouttype;
 
     /** @var int {@see SELECT_ALL}, {@see SELECT_RANDOM} or {@see SELECT_CONTIGUOUS}. */
 
@@ -251,10 +256,6 @@ class qtype_ddingroups_question extends question_graded_automatically {
                     }
                     $countanswers++;
                 }
-                if ($gradingtype == self::GRADING_ALL_OR_NOTHING && $countcorrect < $countanswers) {
-                    $countcorrect = 0;
-                }
-                break;
 
             case self::GRADING_RELATIVE_TO_CORRECT:
                 $correctresponse = $this->correctresponse;
@@ -291,6 +292,9 @@ class qtype_ddingroups_question extends question_graded_automatically {
             }
             if (in_array($filearea, ['correctfeedback', 'partiallycorrectfeedback', 'incorrectfeedback'])) {
                 return $this->check_combined_feedback_file_access($qa, $options, $filearea, $args);
+            }
+            if ($filearea == 'hint') {
+                return $this->check_hint_file_access($qa, $options, $args);
             }
         }
         return parent::check_file_access($qa, $options, $component, $filearea, $args, $forcedownload);
