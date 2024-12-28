@@ -541,7 +541,18 @@ class qtype_ddingroups_question extends question_graded_automatically {
     }
 
 
-
+    public static function get_numbering_styles(?string $style = null): array|string {
+        $plugin = 'qtype_ddingroups';
+        $styles = [
+            'none' => get_string('numberingstylenone', $plugin),
+            'abc' => get_string('numberingstyleabc', $plugin),
+            'ABCD' => get_string('numberingstyleABCD', $plugin),
+            '123' => get_string('numberingstyle123', $plugin),
+            'iii' => get_string('numberingstyleiii', $plugin),
+            'IIII' => get_string('numberingstyleIIII', $plugin),
+        ];
+        return self::get_types($styles, $style);
+    }
 
     /**
      * Return the number of subparts of this response that are correct|partial|incorrect.
