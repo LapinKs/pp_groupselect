@@ -18,7 +18,7 @@
         <FIELD NAME="partiallycorrectfeedbackformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="incorrectfeedback" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Обратная связь для неправильного ответа"/>
         <FIELD NAME="incorrectfeedbackformat" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-		<FIELD NAME="shownumcorrect" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Показывать ли количество правильных ответов студентам"/>
+        <FIELD NAME="shownumcorrect" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Показывать ли количество правильных ответов студентам"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Первичный ключ для qtype_ddingroups_options"/>
@@ -41,6 +41,20 @@
         <KEY NAME="question" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
+
+    <!-- Таблица для хранения групп -->
+    <TABLE NAME="qtype_ddingroups_groups" COMMENT="Groups for drag-and-drop questions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="content" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="имя группы"/>
+        <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Ссылка на ID вопроса в таблице question"/>
+        <FIELD NAME="groupnumber" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Номер группы"/>
+        <FIELD NAME="correctanswers" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="Количество верных ответов в группе"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Первичный ключ для qtype_ddingroups_groups"/>
+        <KEY NAME="question" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+      </KEYS>
+    </TABLE>
   </TABLES>
 </XMLDB>
-
