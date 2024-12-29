@@ -3,9 +3,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 
-require_once($CFG->dirroot.'/question/type/ddingrous/question.php');
+require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
 
-class qtype_ddingrous_edit_form extends question_edit_form {
+class qtype_ddingroups_edit_form extends question_edit_form {
 
     /** Rows count in answer field */
     const TEXTFIELD_ROWS = 2;
@@ -23,7 +23,7 @@ class qtype_ddingrous_edit_form extends question_edit_form {
     const NUM_ITEMS_ADD = 1;
 
     public function qtype(): string {
-        return 'ddingrous';
+        return 'ddingroups';
     }
 
     /**
@@ -32,64 +32,42 @@ class qtype_ddingrous_edit_form extends question_edit_form {
      * @return string
      */
     public function plugin_name(): string {
-        return 'qtype_ddingrous';
+        return 'qtype_ddingroups';
     }
 
     public function definition_inner($mform): void {
         // Field for layouttype.
-        $options = qtype_ddingrous_question::get_layout_types();
-        $mform->addElement('select', 'layouttype', get_string('layouttype', 'qtype_ddingrous'), $options);
-        $mform->addHelpButton('layouttype', 'layouttype', 'qtype_ddingrous');
-        $mform->setDefault('layouttype', $this->get_default_value('layouttype', qtype_ddingrous_question::LAYOUT_VERTICAL));
+        // $options = qtype_ddingroups_question::get_layout_types();
+        // $mform->addElement('select', 'layouttype', get_string('layouttype', 'qtype_ddingroups'), $options);
+        // $mform->addHelpButton('layouttype', 'layouttype', 'qtype_ddingroups');
+        // $mform->setDefault('layouttype', $this->get_default_value('layouttype', qtype_ddingroups_question::LAYOUT_VERTICAL));
 
-        // Field for selecttype.
-        $options = qtype_ddingrous_question::get_select_types();
-        $mform->addElement('select', 'selecttype', get_string('selecttype', 'qtype_ddingrous'), $options);
-        $mform->addHelpButton('selecttype', 'selecttype', 'qtype_ddingrous');
-        $mform->setDefault('selecttype', $this->get_default_value('selecttype', qtype_ddingrous_question::SELECT_ALL));
-
-        // Field for selectcount.
-        $mform->addElement('text', 'selectcount', get_string('selectcount', 'qtype_ddingrous'), ['size' => 2]);
-        $mform->setDefault('selectcount', qtype_ddingrous_question::MIN_SUBSET_ITEMS);
-        $mform->setType('selectcount', PARAM_INT);
-        // Hide the field if 'Item selection type' is set to select all items.
-        $mform->hideIf('selectcount', 'selecttype', 'eq', qtype_ddingrous_question::SELECT_ALL);
-        $mform->addHelpButton('selectcount', 'selectcount', 'qtype_ddingrous');
-        $mform->addRule('selectcount', null, 'numeric', null, 'client');
 
         // Field for gradingtype.
-        $options = qtype_ddingrous_question::get_grading_types();
-        $mform->addElement('select', 'gradingtype', get_string('gradingtype', 'qtype_ddingrous'), $options);
-        $mform->addHelpButton('gradingtype', 'gradingtype', 'qtype_ddingrous');
+        $options = qtype_ddingroups_question::get_grading_types();
+        $mform->addElement('select', 'gradingtype', get_string('gradingtype', 'qtype_ddingroups'), $options);
+        $mform->addHelpButton('gradingtype', 'gradingtype', 'qtype_ddingroups');
         $mform->setDefault(
             'gradingtype',
-            $this->get_default_value('gradingtype', qtype_ddingrous_question::GRADING_ABSOLUTE_POSITION)
+            $this->get_default_value('gradingtype', qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION)
         );
 
         // Field for showgrading.
         $options = [0 => get_string('hide'), 1 => get_string('show')];
-        $mform->addElement('select', 'showgrading', get_string('showgrading', 'qtype_ddingrous'), $options);
-        $mform->addHelpButton('showgrading', 'showgrading', 'qtype_ddingrous');
+        $mform->addElement('select', 'showgrading', get_string('showgrading', 'qtype_ddingroups'), $options);
+        $mform->addHelpButton('showgrading', 'showgrading', 'qtype_ddingroups');
         $mform->setDefault('showgrading', $this->get_default_value('showgrading', 1));
 
-        // Field for numberingstyle.
-        $options = qtype_ddingrous_question::get_numbering_styles();
-        $mform->addElement('select', 'numberingstyle', get_string('numberingstyle', 'qtype_ddingrous'), $options);
-        $mform->addHelpButton('numberingstyle', 'numberingstyle', 'qtype_ddingrous');
-        $mform->setDefault(
-            'numberingstyle',
-            $this->get_default_value('numberingstyle', qtype_ddingrous_question::NUMBERING_STYLE_DEFAULT)
-        );
-
-        $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingrous'));
-        $mform->setExpanded('answersheader', true);
+        
 
         // Field for the answers.
         $elements = [];
         $options = [];
-        $elements[] = $mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingrous'),
+        $elements[] = $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
+        $elements[] = $mform->setExpanded('answersheader', true);
+        $elements[] = $mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingroups'),
             $this->get_editor_attributes(), $this->get_editor_options());
-        $elements[] = $mform->createElement('submit', 'answer' . 'removeeditor', get_string('removeeditor', 'qtype_ddingrous'),
+        $elements[] = $mform->createElement('submit', 'answer' . 'removeeditor', get_string('removeeditor', 'qtype_ddingroups'),
             ['onclick' => 'skipClientValidation = true;']);
         $options['answer'] = ['type' => PARAM_RAW];
         $this->add_repeat_elements($mform, 'answer', $elements, $options);
@@ -179,7 +157,7 @@ class qtype_ddingrous_edit_form extends question_edit_form {
             $ids = [];
         }
 
-        $defaultanswerformat = get_config('qtype_ddingrous', 'defaultanswerformat');
+        $defaultanswerformat = get_config('qtype_ddingroups', 'defaultanswerformat');
 
         $repeats = 'count'.$name.'s'; // E.g. countanswers.
         if ($mform->elementExists($repeats)) {
@@ -248,7 +226,7 @@ class qtype_ddingrous_edit_form extends question_edit_form {
         }
 
         $optionelements[] = $mform->createElement('advcheckbox', 'hintoptions', '',
-            get_string('highlightresponse', 'qtype_ddingrous'));
+            get_string('highlightresponse', 'qtype_ddingroups'));
 
         if (count($optionelements)) {
             $repeated[] = $mform->createElement('group', 'hintoptions',
@@ -278,7 +256,7 @@ class qtype_ddingrous_edit_form extends question_edit_form {
             $answerids = array_keys($question->options->answers);
         }
 
-        $defaultanswerformat = get_config('qtype_ddingrous', 'defaultanswerformat');
+        $defaultanswerformat = get_config('qtype_ddingroups', 'defaultanswerformat');
         $repeats = $this->get_answer_repeats($question);
         for ($i = 0; $i < $repeats; $i++) {
 
@@ -307,12 +285,12 @@ class qtype_ddingrous_edit_form extends question_edit_form {
 
         // Defining default values.
         $names = [
-            'layouttype' => qtype_ddingrous_question::LAYOUT_VERTICAL,
-            'selecttype' => qtype_ddingrous_question::SELECT_ALL,
-            'selectcount' => qtype_ddingrous_question::MIN_SUBSET_ITEMS,
-            'gradingtype' => qtype_ddingrous_question::GRADING_ABSOLUTE_POSITION,
+            'layouttype' => qtype_ddingroups_question::LAYOUT_VERTICAL,
+            'selecttype' => qtype_ddingroups_question::SELECT_ALL,
+            'selectcount' => qtype_ddingroups_question::MIN_SUBSET_ITEMS,
+            'gradingtype' => qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION,
             'showgrading' => 1,  // 1 means SHOW.
-            'numberingstyle' => qtype_ddingrous_question::NUMBERING_STYLE_DEFAULT,
+            'numberingstyle' => qtype_ddingroups_question::NUMBERING_STYLE_DEFAULT,
         ];
         foreach ($names as $name => $default) {
             $question->$name = $question->options->$name ?? $this->get_default_value($name, $default);
@@ -338,10 +316,10 @@ class qtype_ddingrous_edit_form extends question_edit_form {
     public function validation($data, $files): array {
         $errors = [];
 
-        $minsubsetitems = qtype_ddingrous_question::MIN_SUBSET_ITEMS;
+        $minsubsetitems = qtype_ddingroups_question::MIN_SUBSET_ITEMS;
         // Make sure the entered size of the subset is no less than the defined minimum.
-        if ($data['selecttype'] != qtype_ddingrous_question::SELECT_ALL && $data['selectcount'] < $minsubsetitems) {
-            $errors['selectcount'] = get_string('notenoughsubsetitems', 'qtype_ddingrous', $minsubsetitems);
+        if ($data['selecttype'] != qtype_ddingroups_question::SELECT_ALL && $data['selectcount'] < $minsubsetitems) {
+            $errors['selectcount'] = get_string('notenoughsubsetitems', 'qtype_ddingroups', $minsubsetitems);
         }
 
         // Identify duplicates and report as an error.
@@ -354,11 +332,11 @@ class qtype_ddingrous_edit_form extends question_edit_form {
             if ($answer = trim($answer)) {
                 if (in_array($answer, $answers)) {
                     $i = array_search($answer, $answers);
-                    $item = get_string('draggableitemno', 'qtype_ddingrous');
+                    $item = get_string('draggableitemno', 'qtype_ddingroups');
                     $item = str_replace('{no}', $i + 1, $item);
                     $item = html_writer::link("#id_answer_$i", $item);
                     $a = (object) ['text' => $answer, 'item' => $item];
-                    $errors["answer[$answercount]"] = get_string('duplicatesnotallowed', 'qtype_ddingrous', $a);
+                    $errors["answer[$answercount]"] = get_string('duplicatesnotallowed', 'qtype_ddingroups', $a);
                 } else {
                     $answers[] = $answer;
                 }
@@ -369,14 +347,14 @@ class qtype_ddingrous_edit_form extends question_edit_form {
         // If there are no answers provided, show error message under first 2 answer boxes
         // If only 1 answer provided, show error message under second answer box.
         if ($answercount < 2) {
-            $errors['answer[1]'] = get_string('notenoughanswers', 'qtype_ddingrous', 2);
+            $errors['answer[1]'] = get_string('notenoughanswers', 'qtype_ddingroups', 2);
 
             if ($answercount == 0) {
-                $errors['answer[0]'] = get_string('notenoughanswers', 'qtype_ddingrous', 2);
+                $errors['answer[0]'] = get_string('notenoughanswers', 'qtype_ddingroups', 2);
             }
         }
 
-        // If adding a new ddingrous question, update defaults.
+        // If adding a new ddingroups question, update defaults.
         if (empty($errors) && empty($data['id'])) {
             $fields = [
                 'layouttype', 'selecttype', 'selectcount',
@@ -404,9 +382,9 @@ class qtype_ddingrous_edit_form extends question_edit_form {
         $options = [];
         for ($i = 1; $i <= $max; $i++) {
             if ($i == 1) {
-                $options[$i] = get_string('addsingle'.$type, 'qtype_ddingrous');
+                $options[$i] = get_string('addsingle'.$type, 'qtype_ddingroups');
             } else {
-                $options[$i] = get_string('addmultiple'.$type.'s', 'qtype_ddingrous', $i);
+                $options[$i] = get_string('addmultiple'.$type.'s', 'qtype_ddingroups', $i);
             }
         }
         return $options;
@@ -435,7 +413,7 @@ class qtype_ddingrous_edit_form extends question_edit_form {
         $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
 
         $label = ($count == 1 ? 'addsingle'.$type : 'addmultiple'.$types);
-        $label = get_string($label, 'qtype_ddingrous', $count);
+        $label = get_string($label, 'qtype_ddingroups', $count);
 
         $this->repeat_elements($elements, $repeats, $options, $counttypes, $addtypes, $count, $label, true);
 

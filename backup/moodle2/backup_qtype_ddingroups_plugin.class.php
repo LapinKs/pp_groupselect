@@ -51,8 +51,8 @@ class backup_qtype_ddingroups_plugin extends backup_qtype_plugin {
         $this->add_question_question_answers($pluginwrapper);
 
         // Now create the qtype own structures.
-        $fields = ['layouttype', 'selecttype', 'selectcount',
-            'gradingtype', 'showgrading', 'numberingstyle',
+        $fields = ['groupcount',
+            'gradingtype', 'showgrading', 
             'correctfeedback', 'correctfeedbackformat',
             'incorrectfeedback', 'incorrectfeedbackformat',
             'partiallycorrectfeedback', 'partiallycorrectfeedbackformat', 'shownumcorrect',

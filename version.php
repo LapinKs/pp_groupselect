@@ -1,12 +1,7 @@
 <?php
 
 
-/**
- * Version information for the mulridrop question type.
- *
- * @package    qtype
- * @subpackage multidrop
- */
+
 
 defined('MOODLE_INTERNAL') || die();
 

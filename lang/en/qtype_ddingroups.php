@@ -15,9 +15,9 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Ordering question type language srings
+ * ddingroups question type language srings
  *
- * @package    qtype_ordering
+ * @package    qtype_ddingroups
  * @copyright  2013 Gordon Bateson (gordon.bateson@gmail.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -35,9 +35,9 @@ $string['defaultanswerformat'] = 'Default answer format';
 $string['defaultquestionname'] = 'Drag the following items into the correct order.';
 
 $string['draggableitemno'] = 'Draggable item {no}';
-$string['draggableitems'] = 'Draggable items';
+$string['draggableitems'] = 'Right answers for group';
 $string['duplicatesnotallowed'] = 'Duplication of draggable items is not allowed. The string "{$a->text}" is already used in {$a->item}.';
-$string['editingordering'] = 'Editing ordering question';
+$string['editingddingroups'] = 'Editing ddingroups question';
 
 $string['gradedetails'] = 'Grade details';
 $string['gradingtype'] = 'Grading type';
@@ -81,7 +81,7 @@ $string['moveleft'] = 'Move left';
 $string['moveright'] = 'Move right';
 $string['noresponsedetails'] = 'Sorry, no details of the response to this question are available.';
 $string['noscore'] = 'No score';
-$string['notenoughanswers'] = 'Ordering questions must have more than {$a} answers.';
+$string['notenoughanswers'] = 'ddingroups questions must have more than {$a} answers.';
 $string['notenoughsubsetitems'] = 'A subset must have at least {$a} items.';
 
 $string['numberingstyle'] = 'Number the choices?';
@@ -95,11 +95,11 @@ $string['numberingstyleiii'] = 'i., ii., iii., ...';
 $string['numberingstylenone'] = 'No numbering';
 
 $string['partialitemsnumber'] = 'Partially correct items: {$a}';
-$string['pluginname'] = 'Ordering';
+$string['pluginname'] = 'Drag and drop into groups';
 $string['pluginname_help'] = 'Several items are displayed in a jumbled order. The items can be dragged into a meaningful order.';
-$string['pluginname_link'] = 'question/type/ordering';
-$string['pluginnameadding'] = 'Adding an Ordering question';
-$string['pluginnameediting'] = 'Editing an Ordering question';
+$string['pluginname_link'] = 'question/type/ddingroups';
+$string['pluginnameadding'] = 'Adding an ddingroups question';
+$string['pluginnameediting'] = 'Editing an ddingroups question';
 $string['pluginnamesummary'] = 'Put jumbled items into a meaningful order.';
 $string['positionx'] = 'Position {$a}';
 $string['privacy:preference:gradingtype'] = 'The grading type.';
@@ -127,6 +127,6 @@ $string['selectrandom'] = 'Select a random subset of items';
 $string['selecttype'] = 'Item selection type';
 $string['selecttype_help'] = 'Choose whether to display all the items or a subset of the items.';
 $string['showgrading'] = 'Grading details';
-$string['showgrading_help'] = 'Choose whether to show or hide details of the score calculation when a student reviews a response to this Ordering question.';
+$string['showgrading_help'] = 'Choose whether to show or hide details of the score calculation when a student reviews a response to this ddingroups question.';
 
 $string['vertical'] = 'Vertical';
