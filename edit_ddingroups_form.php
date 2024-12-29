@@ -57,14 +57,17 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $mform->addElement('select', 'showgrading', get_string('showgrading', 'qtype_ddingroups'), $options);
         $mform->addHelpButton('showgrading', 'showgrading', 'qtype_ddingroups');
         $mform->setDefault('showgrading', $this->get_default_value('showgrading', 1));
+        $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
+        $mform->setExpanded('answersheader', true);
 
-        
+        $groupelements = [];
+        $groupelements[] = $mform->addElement('text', 'draggablegroupheader', get_string('draggablegroup', 'qtype_ddingroups'));
+        $mform->addElement('text', 'draggablegroupheader', get_string('draggablegroup', 'qtype_ddingroups'));
 
         // Field for the answers.
         $elements = [];
         $options = [];
-        $elements[] = $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
-        $elements[] = $mform->setExpanded('answersheader', true);
+       
         $elements[] = $mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingroups'),
             $this->get_editor_attributes(), $this->get_editor_options());
         $elements[] = $mform->createElement('submit', 'answer' . 'removeeditor', get_string('removeeditor', 'qtype_ddingroups'),
@@ -400,7 +403,6 @@ class qtype_ddingroups_edit_form extends question_edit_form {
      * @return void, but will update $mform
      */
     protected function add_repeat_elements(MoodleQuickForm $mform, string $type, array $elements, array $options): void {
-
         // Cache element names.
         $types = $type.'s';
         $addtypes = 'add'.$types;

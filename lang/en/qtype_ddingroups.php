@@ -35,7 +35,8 @@ $string['defaultanswerformat'] = 'Default answer format';
 $string['defaultquestionname'] = 'Drag the following items into the correct order.';
 
 $string['draggableitemno'] = 'Draggable item {no}';
-$string['draggableitems'] = 'Right answers for group';
+$string['draggablegroup'] = 'Description for draggable group';
+$string['draggableitems'] = 'Groups and answers';
 $string['duplicatesnotallowed'] = 'Duplication of draggable items is not allowed. The string "{$a->text}" is already used in {$a->item}.';
 $string['editingddingroups'] = 'Editing ddingroups question';
 
@@ -100,7 +101,7 @@ $string['pluginname_help'] = 'Several items are displayed in a jumbled order. Th
 $string['pluginname_link'] = 'question/type/ddingroups';
 $string['pluginnameadding'] = 'Adding an ddingroups question';
 $string['pluginnameediting'] = 'Editing an ddingroups question';
-$string['pluginnamesummary'] = 'Put jumbled items into a meaningful order.';
+$string['pluginnamesummary'] = 'Put jumbled items into a group.';
 $string['positionx'] = 'Position {$a}';
 $string['privacy:preference:gradingtype'] = 'The grading type.';
 $string['privacy:preference:layouttype'] = 'The layout of items.';
