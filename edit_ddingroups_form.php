@@ -36,54 +36,55 @@ class qtype_ddingroups_edit_form extends question_edit_form {
     }
 
     public function definition_inner($mform): void {
-        // Field for layouttype.
-        // $options = qtype_ddingroups_question::get_layout_types();
-        // $mform->addElement('select', 'layouttype', get_string('layouttype', 'qtype_ddingroups'), $options);
-        // $mform->addHelpButton('layouttype', 'layouttype', 'qtype_ddingroups');
-        // $mform->setDefault('layouttype', $this->get_default_value('layouttype', qtype_ddingroups_question::LAYOUT_VERTICAL));
-
-
-        // Field for gradingtype.
+        // Скрытое поле для хранения количества групп.
+        $mform->addElement('hidden', 'groupcount', 1);
+        $mform->setType('groupcount', PARAM_INT);
+    
+        // Определяем количество групп.
+        $groupCount = optional_param('groupcount', 1, PARAM_INT);
+    
+        // Если нажата кнопка "Добавить группу", увеличиваем количество групп.
+        if ($this->is_add_group_pressed()) {
+            $groupCount++;
+        }
+    
+        // Обновляем значение groupcount.
+        $mform->setDefault('groupcount', $groupCount);
+    
+        // Поля для настроек оценивания.
         $options = qtype_ddingroups_question::get_grading_types();
         $mform->addElement('select', 'gradingtype', get_string('gradingtype', 'qtype_ddingroups'), $options);
         $mform->addHelpButton('gradingtype', 'gradingtype', 'qtype_ddingroups');
-        $mform->setDefault(
-            'gradingtype',
-            $this->get_default_value('gradingtype', qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION)
-        );
-
-        // Field for showgrading.
+        $mform->setDefault('gradingtype', qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION);
+    
         $options = [0 => get_string('hide'), 1 => get_string('show')];
         $mform->addElement('select', 'showgrading', get_string('showgrading', 'qtype_ddingroups'), $options);
         $mform->addHelpButton('showgrading', 'showgrading', 'qtype_ddingroups');
-        $mform->setDefault('showgrading', $this->get_default_value('showgrading', 1));
-        $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
-        $mform->setExpanded('answersheader', true);
-
-        $groupelements = [];
-        $groupelements[] = $mform->addElement('text', 'draggablegroupheader', get_string('draggablegroup', 'qtype_ddingroups'));
-        $mform->addElement('text', 'draggablegroupheader', get_string('draggablegroup', 'qtype_ddingroups'));
-
-        // Field for the answers.
-        $elements = [];
-        $options = [];
-       
-        $elements[] = $mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingroups'),
-            $this->get_editor_attributes(), $this->get_editor_options());
-        $elements[] = $mform->createElement('submit', 'answer' . 'removeeditor', get_string('removeeditor', 'qtype_ddingroups'),
-            ['onclick' => 'skipClientValidation = true;']);
-        $options['answer'] = ['type' => PARAM_RAW];
-        $this->add_repeat_elements($mform, 'answer', $elements, $options);
-
-        // Adjust HTML editor and removal buttons.
-        $this->adjust_html_editors($mform, 'answer');
-
-        // Adding feedback fields (=Combined feedback).
+        $mform->setDefault('showgrading', 1);
+    
+        // Заголовок для групп.
+        $mform->addElement('header', 'groupsheader', get_string('groups', 'qtype_ddingroups'));
+        $mform->setExpanded('groupsheader', true);
+    
+        // Добавляем группы.
+        $this->add_group_elements($mform, $groupCount);
+    
+        // Поля для обратной связи.
         $this->add_combined_feedback_fields(true);
-
-        // Adding interactive settings (=Multiple tries).
+    
+        // Настройки интерактивности.
         $this->add_interactive_settings(false, true);
     }
+    
+    
+    protected function is_add_group_pressed(): bool {
+        return optional_param('addgroup', false, PARAM_BOOL);
+    }
+    
+
+    
+    
+    
 
     /**
      * Returns answer repeats count
@@ -393,44 +394,145 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         return $options;
     }
 
-    /**
-     * Add repeated elements with a button allowing a selectable number of new elements
-     *
-     * @param MoodleQuickForm $mform the Moodle form object
-     * @param string $type
-     * @param array $elements
-     * @param array $options
-     * @return void, but will update $mform
-     */
-    protected function add_repeat_elements(MoodleQuickForm $mform, string $type, array $elements, array $options): void {
-        // Cache element names.
-        $types = $type.'s';
-        $addtypes = 'add'.$types;
-        $counttypes = 'count'.$types;
-        $addtypescount = $addtypes.'count';
-        $addtypesgroup = $addtypes.'group';
 
-        $repeats = $this->get_answer_repeats($this->question);
-
-        $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
-
-        $label = ($count == 1 ? 'addsingle'.$type : 'addmultiple'.$types);
+    protected function add_repeat_elements(
+        MoodleQuickForm $mform,
+        string $type,
+        array $elements,
+        array $options
+    ): void {
+        $types = $type . 's';
+        $addTypes = 'add' . $types;
+        $countTypes = 'count' . $types;
+        $addTypesCount = $addTypes . 'count';
+        $addTypesGroup = $addTypes . 'group';
+    
+        // Количество повторений для вариантов.
+        $repeats = optional_param($countTypes, self::NUM_ITEMS_DEFAULT, PARAM_INT);
+    
+        // Кнопка для добавления новых вариантов.
+        $count = optional_param($addTypesCount, self::NUM_ITEMS_ADD, PARAM_INT);
+        $label = ($count == 1 ? 'addsingle' . $type : 'addmultiple' . $types);
         $label = get_string($label, 'qtype_ddingroups', $count);
-
-        $this->repeat_elements($elements, $repeats, $options, $counttypes, $addtypes, $count, $label, true);
-
-        // Remove the original "Add xxx" button ...
-        $mform->removeElement($addtypes);
-
-        // ... and replace it with "Add" button + select group.
-        $options = $this->get_addcount_options($type);
+    
+        // Добавляем повторяющиеся элементы.
+        $this->repeat_elements($elements, $repeats, $options, $countTypes, $addTypes, $count, $label, true);
+    
+        // Удаляем стандартную кнопку "Add xxx".
+        $mform->removeElement($addTypes);
+    
+        // Добавляем группу с кнопкой и выбором количества.
+        $addOptions = $this->get_addcount_options($type);
         $mform->addGroup([
-            $mform->createElement('submit', $addtypes, get_string('add')),
-            $mform->createElement('select', $addtypescount, '', $options),
-        ], $addtypesgroup, '', ' ', false);
-
-        // Set default value and type of select element.
-        $mform->setDefault($addtypescount, $count);
-        $mform->setType($addtypescount, PARAM_INT);
+            $mform->createElement('submit', $addTypes, get_string('add')),
+            $mform->createElement('select', $addTypesCount, '', $addOptions),
+        ], $addTypesGroup, '', ' ', false);
+    
+        // Устанавливаем значение по умолчанию.
+        $mform->setDefault($addTypesCount, $count);
+        $mform->setType($addTypesCount, PARAM_INT);
     }
+    
+    
+    
+    
+    protected function add_group_elements(MoodleQuickForm $mform, int $groupCount): void {
+        for ($i = 0; $i < $groupCount; $i++) {
+            // Заголовок группы.
+            $mform->addElement('header', "groupheader[$i]", get_string('group', 'qtype_ddingroups') . ' ' . ($i + 1));
+            $mform->setExpanded("groupheader[$i]", true);
+    
+            // Поле для названия группы.
+            $mform->addElement('text', "groupname[$i]", get_string('groupname', 'qtype_ddingroups'), ['size' => 50]);
+            $mform->setType("groupname[$i]", PARAM_TEXT);
+            $mform->addHelpButton("groupname[$i]", 'groupname', 'qtype_ddingroups');
+    
+            // Добавляем варианты ответа для текущей группы.
+            $this->add_group_answers($mform, $i);
+        }
+    
+        // Кнопка для добавления новой группы.
+        $mform->addElement('submit', 'addgroup', get_string('addgroup', 'qtype_ddingroups'));
+        $mform->registerNoSubmitButton('addgroup');
+    }
+    protected function add_group_answers(MoodleQuickForm $mform, int $groupIndex): void {
+        // Поля для вариантов ответа внутри группы.
+        $elements = [];
+        $options = [];
+    
+        // Определяем название для каждого варианта ответа внутри группы.
+        $elements[] = $mform->createElement(
+            'text',
+            "answer[$groupIndex][]",
+            get_string('draggableitemno', 'qtype_ddingroups'),
+            ['size' => 60]
+        );
+        $options["answer[$groupIndex][]"] = ['type' => PARAM_RAW];
+    
+        // Добавляем повторяющиеся элементы для вариантов ответа.
+        $this->add_repeat_elements($mform, "answer[$groupIndex]", $elements, $options);
+    
+        // Кнопка для добавления варианта ответа в текущую группу.
+        $mform->addElement('submit', "addanswer[$groupIndex]", get_string('addanswer', 'qtype_ddingroups'));
+        $mform->registerNoSubmitButton("addanswer[$groupIndex]");
+    }
+    
+    
+    
+    
+        // $this->repeat_elements(
+        //             $group, 
+        //             1, // Количество групп по умолчанию.
+        //             [],
+        //             'groupcount', // Скрытое поле для отслеживания количества групп.
+        //             'addgroup',   // Имя кнопки для добавления группы.
+        //             1,            // Сколько групп добавляется за раз.
+        //             get_string('addgroup', 'qtype_ddingroups'), 
+        //             true          // Разрешаем удаление элементов.
+        //         );
+    // protected function add_group_elements(MoodleQuickForm $mform): void {
+    //     // Определяем элементы группы.
+    //     $group = [];
+        
+    //     // Поле для названия группы.
+    //     $group[] = $mform->createElement(
+    //         'text', 
+    //         'groupname', 
+    //         get_string('groupname', 'qtype_ddingroups'), 
+    //         ['size' => 50]
+    //     );
+    //     $mform->setType('groupname', PARAM_TEXT);
+    
+    //     // Поле для описания группы.
+    //     $group[] = $mform->createElement(
+    //         'editor', 
+    //         'groupdescription', 
+    //         get_string('groupdescription', 'qtype_ddingroups'), 
+    //         null, 
+    //         $this->get_editor_options()
+    //     );
+    //     $mform->setType('groupdescription', PARAM_RAW);
+    
+    //     // Добавляем вложенные элементы внутри группы (например, варианты ответов).
+    //     $group[] = $mform->createElement(
+    //         'text', 
+    //         'answertext', 
+    //         get_string('draggableitemno', 'qtype_ddingroups'), 
+    //         $this->get_editor_attributes()
+    //     );
+    //     $mform->setType('answertext', PARAM_RAW);
+    
+    //     // Используем repeat_elements для динамического добавления групп.
+    //     $this->repeat_elements(
+    //         $group, 
+    //         1, // Количество групп по умолчанию.
+    //         [],
+    //         'groupcount', // Скрытое поле для отслеживания количества групп.
+    //         'addgroup',   // Имя кнопки для добавления группы.
+    //         1,            // Сколько групп добавляется за раз.
+    //         get_string('addgroup', 'qtype_ddingroups'), 
+    //         true          // Разрешаем удаление элементов.
+    //     );
+    // }
+    
 }

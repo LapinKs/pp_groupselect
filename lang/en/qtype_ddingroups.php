@@ -22,7 +22,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['absoluteposition'] = 'Absolute position';
+$string['absoluteposition'] = 'Absolute';
 $string['addmultipleanswers'] = 'Add {$a} more items';
 $string['addsingleanswer'] = 'Add one more item';
 $string['allornothing'] = 'All or nothing';
@@ -115,7 +115,7 @@ $string['relativeallpreviousandnext'] = 'Relative to ALL the previous and next i
 $string['relativenextexcludelast'] = 'Relative to the next item (excluding last)';
 $string['relativenextincludelast'] = 'Relative to the next item (including last)';
 $string['relativeonepreviousandnext'] = 'Relative to both the previous and next items';
-$string['relativetocorrect'] = 'Relative to correct position';
+$string['relativetocorrect'] = 'Relative to correct ';
 $string['removeeditor'] = 'Remove HTML editor';
 $string['removeitem'] = 'Remove draggable item';
 
@@ -130,4 +130,12 @@ $string['selecttype_help'] = 'Choose whether to display all the items or a subse
 $string['showgrading'] = 'Grading details';
 $string['showgrading_help'] = 'Choose whether to show or hide details of the score calculation when a student reviews a response to this ddingroups question.';
 
-$string['vertical'] = 'Vertical';
+$string['group'] = 'Group';
+$string['groupname'] = 'Group Name';
+$string['addgroup'] = 'Add a new group';
+$string['addvariant'] = 'Add a new variant';
+$string['draggableitemno'] = 'Draggable Item {no}';
+$string['addsingleanswer'] = 'Add a single answer';
+$string['addmultipleanswers'] = 'Add {no} answers';
+
+
