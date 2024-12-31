@@ -137,5 +137,6 @@ $string['addvariant'] = 'Add a new variant';
 $string['draggableitemno'] = 'Draggable Item {no}';
 $string['addsingleanswer'] = 'Add a single answer';
 $string['addmultipleanswers'] = 'Add {no} answers';
+$string['groups'] = 'Groups';
 
 
