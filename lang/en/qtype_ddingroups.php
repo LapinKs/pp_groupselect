@@ -35,11 +35,12 @@ $string['defaultanswerformat'] = 'Default answer format';
 $string['defaultquestionname'] = 'Drag the following items into the correct order.';
 
 $string['draggableitemno'] = 'Draggable item {no}';
+$string['groupno'] = 'Group {no} description';
 $string['draggablegroup'] = 'Description for draggable group';
-$string['draggableitems'] = 'Groups and answers';
+$string['draggableitems'] = 'Answers';
 $string['duplicatesnotallowed'] = 'Duplication of draggable items is not allowed. The string "{$a->text}" is already used in {$a->item}.';
 $string['editingddingroups'] = 'Editing ddingroups question';
-
+$string['groups'] = 'Groups';
 $string['gradedetails'] = 'Grade details';
 $string['gradingtype'] = 'Grading type';
 $string['gradingtype_help'] = '**All or nothing**
