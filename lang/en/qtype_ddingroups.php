@@ -25,9 +25,13 @@
 $string['absoluteposition'] = 'Absolute';
 $string['addmultipleanswers'] = 'Add {$a} more items';
 $string['addsingleanswer'] = 'Add one more item';
+$string['addmultiplegroupss'] = 'Add {$a} more groups';
+$string['addsinglegroups'] = 'Add one more group';
+$string['addmultiplewrongs'] = 'Add {$a} more wrong answers';
+$string['addsinglewrong'] = 'Add one more wrong answer';
 $string['allornothing'] = 'All or nothing';
 $string['answer'] = 'Item text';
-
+$string['selectforgroup'] = 'Group - owner number';
 $string['correctitemsnumber'] = 'Correct items: {$a}';
 $string['correctorder'] = 'The correct order for these items is as follows:';
 
@@ -35,7 +39,7 @@ $string['defaultanswerformat'] = 'Default answer format';
 $string['defaultquestionname'] = 'Drag the following items into the correct order.';
 
 $string['draggableitemno'] = 'Draggable item {no}';
-$string['groupno'] = 'Group {no} description';
+$string['groupno'] = 'Group {no} name';
 $string['draggablegroup'] = 'Description for draggable group';
 $string['draggableitems'] = 'Answers';
 $string['duplicatesnotallowed'] = 'Duplication of draggable items is not allowed. The string "{$a->text}" is already used in {$a->item}.';
@@ -72,6 +76,7 @@ $string['gradingtype_help'] = '**All or nothing**
 
 $string['highlightresponse'] = 'Highlight response as correct or incorrect';
 $string['horizontal'] = 'Horizontal';
+$string['vertical'] = 'Vertical';
 
 $string['incorrectitemsnumber'] = 'Incorrect items: {$a}';
 $string['layouttype'] = 'Layout of items';
@@ -136,8 +141,7 @@ $string['groupname'] = 'Group Name';
 $string['addgroup'] = 'Add a new group';
 $string['addvariant'] = 'Add a new variant';
 $string['draggableitemno'] = 'Draggable Item {no}';
-$string['addsingleanswer'] = 'Add a single answer';
-$string['addmultipleanswers'] = 'Add {no} answers';
+
 $string['groups'] = 'Groups';
 
-
+$string['wronganswersheader'] = 'Wrong answers';

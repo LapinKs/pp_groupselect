@@ -125,7 +125,24 @@ class qtype_ddingroups_question extends question_graded_automatically {
             '_correctresponse' => implode(',', $newcorrect),
         ];
     }
-
+    public function get_ddingroups_layoutclass(): string {
+        switch ($this->layouttype) {
+            case self::LAYOUT_VERTICAL:
+                return 'vertical';
+            case self::LAYOUT_HORIZONTAL:
+                return 'horizontal';
+            default:
+                return ''; // Shouldn't happen!
+        }
+    }
+    public static function get_layout_types(?int $type = null): array|string {
+        $plugin = 'qtype_ddingroups';
+        $types = [
+            self::LAYOUT_VERTICAL   => get_string('vertical',   $plugin),
+            self::LAYOUT_HORIZONTAL => get_string('horizontal', $plugin),
+        ];
+        return self::get_types($types, $type);
+    }
     public function get_expected_data() {
         $name = $this->get_response_fieldname();
         return [$name => PARAM_TEXT];

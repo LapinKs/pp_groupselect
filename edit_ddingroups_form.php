@@ -14,10 +14,10 @@ class qtype_ddingroups_edit_form extends question_edit_form {
     const TEXTFIELD_COLS = 60;
 
     /** Number of answers in question by default */
-    const NUM_ITEMS_DEFAULT = 6;
+    const NUM_ITEMS_DEFAULT = 1;
 
     /** Minimum number of answers to show */
-    const NUM_ITEMS_MIN = 3;
+    const NUM_ITEMS_MIN = 1;
 
     /** Number of answers to add on demand */
     const NUM_ITEMS_ADD = 1;
@@ -37,10 +37,13 @@ class qtype_ddingroups_edit_form extends question_edit_form {
 
 
     public function definition_inner($mform): void {
-        // Field for layouttype.
-        
-
-        // Field for gradingtype.
+        // Поле для типа макета.
+        $options = qtype_ddingroups_question::get_layout_types();
+        $mform->addElement('select', 'layouttype', get_string('layouttype', 'qtype_ddingroups'), $options);
+        $mform->addHelpButton('layouttype', 'layouttype', 'qtype_ddingroups');
+        $mform->setDefault('layouttype', $this->get_default_value('layouttype', qtype_ddingroups_question::LAYOUT_VERTICAL));
+    
+        // Поле для типа оценивания.
         $options = qtype_ddingroups_question::get_grading_types();
         $mform->addElement('select', 'gradingtype', get_string('gradingtype', 'qtype_ddingroups'), $options);
         $mform->addHelpButton('gradingtype', 'gradingtype', 'qtype_ddingroups');
@@ -48,64 +51,63 @@ class qtype_ddingroups_edit_form extends question_edit_form {
             'gradingtype',
             $this->get_default_value('gradingtype', qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION)
         );
-
-        // Field for showgrading.
+    
+        // Поле для отображения оценивания.
         $options = [0 => get_string('hide'), 1 => get_string('show')];
         $mform->addElement('select', 'showgrading', get_string('showgrading', 'qtype_ddingroups'), $options);
         $mform->addHelpButton('showgrading', 'showgrading', 'qtype_ddingroups');
         $mform->setDefault('showgrading', $this->get_default_value('showgrading', 1));
-
-
-
-
-
+    
+        // Добавляем заголовок для групп.
         $mform->addElement('header', 'groupsheader', get_string('groups', 'qtype_ddingroups'));
-        $mform->setExpanded('groupssheader', true);
-
-        // Field for the answers.
+        $mform->setExpanded('groupsheader', true);
+    
+        // Поля для групп.
         $elements1 = [];
         $options1 = [];
-        $elements1[] = $mform->createElement('text', 'groups', get_string('groupno', 'qtype_ddingroups'),
-            $this->get_editor_attributes(), $this->get_editor_options());
-        // $elements1[] = $mform->createElement('submit', 'groups' . 'removeeditor', get_string('removeeditor', 'qtype_ddingroups'),
-        //     ['onclick' => 'skipClientValidation = true;']);
+        $elements1[] = $mform->createElement('text', 'groups', get_string('groupno', 'qtype_ddingroups'));
+        $elements1[] = $mform->createElement('html', '<hr>');
         $options1['groups'] = ['type' => PARAM_RAW];
         $this->add_repeat_groups($mform, 'groups', $elements1, $options1);
+        $mform->addHelpButton('groups', 'groups', 'qtype_ddingroups');
+    
+        // Вычисляем количество групп.
+        $ccc = $this->get_answer_repeats($this->question); // Количество групп из сохраненного состояния.
+        $ggg = 0;
+        $ggg += $ccc + optional_param('addgroupsscount', self::NUM_ITEMS_ADD, PARAM_INT); // Добавленные группы.
+    
+        // Формируем массив групп для select.
+        $groupsArray = [];
+        for ($i = 1; $i <= $ggg; $i++) {
+            $groupsArray["$i"] = "Group $i"; // Ключ — строковый номер группы, значение — её описание.
+        }
+    
+        // Добавляем заголовок для вариантов ответа.
         $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
-        $mform->setExpanded('answerssheader', true);
-
-        // Field for the answers.
+        $mform->setExpanded('answersheader', true);
+    
+        // Поля для вариантов ответа.
         $elements = [];
         $options = [];
-        // $groupsarray = [1,2,3];
-        // $answerdisplay = [];
-        // $answerdisplay[] = $mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingroups'),
-        // $this->get_editor_attributes(), $this->get_editor_options());
-        // $answerdisplay[] = $mform->createElement('select', $groupsarray, '', $options);
-
-        // $elements[] = $mform->createElement('group', 'answerdisplay', get_string('answerdisplay', 'qtype_randomdata'), $answerdisplay, null, false);
-        // $this->get_editor_options()['context'];
-        $groupsarray = ['1','2','3'];
-        $elements[]=$mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingroups'),
-        $this->get_editor_attributes(), $this->get_editor_options());
-        //  $mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingroups'),
-        // $this->get_editor_attributes(), $this->get_editor_options());
+        $elements[] = $mform->createElement('editor', 'answer', get_string('draggableitemno', 'qtype_ddingroups'),
+            $this->get_editor_attributes(), $this->get_editor_options());
         $elements[] = $mform->createElement('submit', 'answer' . 'removeeditor', get_string('removeeditor', 'qtype_ddingroups'),
             ['onclick' => 'skipClientValidation = true;']);
         $options['answer'] = ['type' => PARAM_RAW];
-        $elements[]  = $mform->createElement('select', $groupsarray, '', $options);
+        $elements[] = $mform->createElement('select', 'selectgroup', get_string('selectforgroup', 'qtype_ddingroups'), $groupsArray);
+        $elements[] = $mform->createElement('html', '<hr>');
         $this->add_repeat_elements($mform, 'answer', $elements, $options);
-
-        // Adjust HTML editor and removal buttons.
+    
+        // Настройка редакторов HTML.
         $this->adjust_html_editors($mform, 'answer');
-
-        // Adding feedback fields (=Combined feedback).
+    
+        // Добавляем поля обратной связи.
         $this->add_combined_feedback_fields(true);
-
-        // Adding interactive settings (=Multiple tries).
+    
+        // Добавляем настройки интерактивности.
         $this->add_interactive_settings(false, true);
     }
-   
+    
     
     protected function add_repeat_elements(MoodleQuickForm $mform, string $type, array $elements, array $options): void {
 
@@ -115,7 +117,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $counttypes = 'count'.$types;
         $addtypescount = $addtypes.'count';
         $addtypesgroup = $addtypes.'group';
-
+        
         $repeats = $this->get_answer_repeats($this->question);
 
         $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
@@ -151,7 +153,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $repeats = $this->get_answer_repeats($this->question);
 
         $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
-
+        
         $label = ($count == 1 ? 'addsingle'.$type : 'addmultiple'.$types);
         $label = get_string($label, 'qtype_ddingroups', $count);
 
@@ -382,8 +384,6 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         // Defining default values.
         $names = [
             'layouttype' => qtype_ddingroups_question::LAYOUT_VERTICAL,
-            'selecttype' => qtype_ddingroups_question::SELECT_ALL,
-            'selectcount' => qtype_ddingroups_question::MIN_SUBSET_ITEMS,
             'gradingtype' => qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION,
             'showgrading' => 1,  // 1 means SHOW.
             'numberingstyle' => qtype_ddingroups_question::NUMBERING_STYLE_DEFAULT,
@@ -487,7 +487,26 @@ class qtype_ddingroups_edit_form extends question_edit_form {
     }
 
 
-    
+    /**
+ * Получает список групп с их названиями.
+ *
+ * @return array Возвращает массив вида [индекс => 'Индекс - Название группы'].
+ */
+protected function get_groups_from_form(): array {
+    // Получаем данные о группах из переданных параметров формы.
+    $groupnames = optional_param_array('groupname', [], PARAM_TEXT); // Массив с названиями групп.
+    $groupsarray = [];
+
+    // Формируем массив: индекс группы => "Индекс - Название группы".
+    foreach ($groupnames as $index => $name) {
+        if (is_numeric($index) && is_string($name) && !empty($name)) {
+            $groupsarray[$index] = ($index + 1) . ' - ' . $name; // Формат: "1 - Название группы".
+        }
+    }
+
+    return $groupsarray;
+}
+
 
     
 }
