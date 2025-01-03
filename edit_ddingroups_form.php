@@ -21,7 +21,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
 
     /** Number of answers to add on demand */
     const NUM_ITEMS_ADD = 1;
-
+    const GROUPS = 1;
     public function qtype(): string {
         return 'ddingroups';
     }
@@ -37,6 +37,8 @@ class qtype_ddingroups_edit_form extends question_edit_form {
 
 
     public function definition_inner($mform): void {
+        global $PAGE;
+    
         // Поле для типа макета.
         $options = qtype_ddingroups_question::get_layout_types();
         $mform->addElement('select', 'layouttype', get_string('layouttype', 'qtype_ddingroups'), $options);
@@ -72,16 +74,25 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $mform->addHelpButton('groups', 'groups', 'qtype_ddingroups');
     
         // Вычисляем количество групп.
-        $ccc = $this->get_answer_repeats($this->question); // Количество групп из сохраненного состояния.
-        $ggg = 0;
-        $ggg += $ccc + optional_param('addgroupsscount', self::NUM_ITEMS_ADD, PARAM_INT); // Добавленные группы.
-    
-        // Формируем массив групп для select.
-        $groupsArray = [];
-        for ($i = 1; $i <= $ggg; $i++) {
-            $groupsArray["$i"] = "Group $i"; // Ключ — строковый номер группы, значение — её описание.
+        $groupsf = 0;
+        $ggg = [];
+        $ggg[] = 1;
+        $ggg[] = optional_param('addgroupsscount', self::NUM_ITEMS_ADD, PARAM_INT); // Добавленные группы.
+        foreach ($ggg as $i) {
+            $groupsf += (int)$i;
         }
     
+        // Получаем текущее количество групп.
+        $currentGroups = isset($mform->_defaultValues['groups']) ? count($mform->_defaultValues['groups']) : 0;
+        $groupsf += $currentGroups;
+    
+        // Формируем массив групп для select.
+        $groupsArray = ['1' => 'Wrong answer'];
+        for ($i = 1; $i <= $groupsf; $i++) {
+            $groupsArray["$i-1"] = "Group $i"; // Ключ — строковый номер группы, значение — её описание.
+        }
+    
+        // $mform->addElement('html', $PAGE->context);
         // Добавляем заголовок для вариантов ответа.
         $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
         $mform->setExpanded('answersheader', true);
@@ -109,6 +120,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
     }
     
     
+    
     protected function add_repeat_elements(MoodleQuickForm $mform, string $type, array $elements, array $options): void {
 
         // Cache element names.
@@ -121,7 +133,6 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $repeats = $this->get_answer_repeats($this->question);
 
         $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
-
         $label = ($count == 1 ? 'addsingle'.$type : 'addmultiple'.$types);
         $label = get_string($label, 'qtype_ddingroups', $count);
 
@@ -385,8 +396,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $names = [
             'layouttype' => qtype_ddingroups_question::LAYOUT_VERTICAL,
             'gradingtype' => qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION,
-            'showgrading' => 1,  // 1 means SHOW.
-            'numberingstyle' => qtype_ddingroups_question::NUMBERING_STYLE_DEFAULT,
+            'showgrading' => 1,
         ];
         foreach ($names as $name => $default) {
             $question->$name = $question->options->$name ?? $this->get_default_value($name, $default);
