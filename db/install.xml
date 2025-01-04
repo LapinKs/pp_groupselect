@@ -9,6 +9,7 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Ссылка на ID вопроса в таблице question"/>
+        <FIELD NAME="layouttype" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Layout type - horizontal or vertical"/>
         <FIELD NAME="groupcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="2" SEQUENCE="false" COMMENT="Количество групп, куда можно перетаскивать элементы"/>
         <FIELD NAME="gradingtype" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Which grading strategy to use. One of the GRADING_... constants."/>
         <FIELD NAME="showgrading" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Should details of the grading calculation be shown to students."/>

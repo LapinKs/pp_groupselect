@@ -43,7 +43,7 @@ $string['groupno'] = 'Group {no} name';
 $string['draggablegroup'] = 'Description for draggable group';
 $string['draggableitems'] = 'Answers';
 $string['duplicatesnotallowed'] = 'Duplication of draggable items is not allowed. The string "{$a->text}" is already used in {$a->item}.';
-$string['editingddingroups'] = 'Editing ddingroups question';
+$string['editingddingroups'] = 'Editing drag and drop into groups question';
 $string['groups'] = 'Groups';
 $string['gradedetails'] = 'Grade details';
 $string['gradingtype'] = 'Grading type';
@@ -54,25 +54,7 @@ $string['gradingtype_help'] = '**All or nothing**
 &nbsp; An item is considered correct if it is in the same position as in the correct answer. The highest possible score for the question is **the same as** the number of items displayed to the student.
 
 **Relative to correct position**
-&nbsp; An item is considered correct if it is in the same position as in the correct answer. Correct items receive a score equal to the number of items displayed minus one. Incorrect items receive a score equal to the number of items displayed minus one and minus the distance of the item from its correct position. Thus, if ***n*** items are displayed to the student, the number of marks available for each item is ***(n - 1)***, and the highest mark available for the question is ***n x (n - 1)***, which is the same as ***(n² - n)***.
-
-**Relative to the next item (excluding last)**
-&nbsp; An item is considered correct if it is followed by the same item as it is in the correct answer. The item in the last position is not checked. Thus, the highest possible score for the question is **one less than** the number of items displayed to the student.
-
-**Relative to the next item (including last)**
-&nbsp; An item is considered correct if it is followed by the same item as it is in the correct answer. This includes the last item which must have no item following it. Thus, the highest possible score for the question is **the same as** the number of items displayed to the student.
-
-**Relative to both the previous and next items**
-&nbsp; An item is considered correct if both the previous and next items are the same as they are in the correct answer. The first item should have no previous item, and the last item should have no next item. Thus, there are two possible points for each item, and the highest possible score for the question is **twice** the number of items displayed to the student.
-
-**Relative to ALL previous and next items**
-&nbsp; An item is considered correct if it is preceded by all the same items as it is in the correct answer, and it is followed by all the same items as it is in the correct answer. The order of the previous items does not matter, and nor does the order of the following items. Thus, if ***n*** items are displayed to the student, the number of marks available for each item is ***(n - 1)***, and the highest mark available for the question is ***n x (n - 1)***, which is the same as ***(n² - n)***.
-
-**Longest ordered subset**
-&nbsp; The grade is the number of items in the longest ordered subset of items. The highest possible grade is the same as the number of items displayed. A subset must have at least two items. Subsets do not need to start at the first item (but they can) and they do not need to be contiguous (but they can be). Where there are multiple subsets of equal length, items in the subset that is found first, when searching from left to right, will be displayed as correct. Other items will be marked as incorrect.
-
-**Longest contiguous subset**
-&nbsp; The grade is the number of items in the longest contiguous subset of items. The highest possible grade is the same as the number of items displayed. A subset must have at least two items. Subsets do not need to start at the first item (but they can) and they MUST BE CONTIGUOUS. Where there are multiple subsets of equal length, items in the subset that is found first, when searching from left to right, will be displayed as correct. Other items will be marked as incorrect.';
+&nbsp; An item is considered correct if it is in the same position as in the correct answer. Correct items receive a score equal to the number of items displayed minus one. Incorrect items receive a score equal to the number of items displayed minus one and minus the distance of the item from its correct position. Thus, if ***n*** items are displayed to the student, the number of marks available for each item is ***(n - 1)***, and the highest mark available for the question is ***n x (n - 1)***, which is the same as ***(n² - n)***.';
 
 $string['highlightresponse'] = 'Highlight response as correct or incorrect';
 $string['horizontal'] = 'Horizontal';
@@ -105,8 +87,8 @@ $string['partialitemsnumber'] = 'Partially correct items: {$a}';
 $string['pluginname'] = 'Drag and drop into groups';
 $string['pluginname_help'] = 'Several items are displayed in a jumbled order. The items can be dragged into a meaningful order.';
 $string['pluginname_link'] = 'question/type/ddingroups';
-$string['pluginnameadding'] = 'Adding an ddingroups question';
-$string['pluginnameediting'] = 'Editing an ddingroups question';
+$string['pluginnameadding'] = 'Adding an drag and drop into groups question';
+$string['pluginnameediting'] = 'Editing an drag and drop into groups question';
 $string['pluginnamesummary'] = 'Put jumbled items into a group.';
 $string['positionx'] = 'Position {$a}';
 $string['privacy:preference:gradingtype'] = 'The grading type.';
@@ -145,3 +127,8 @@ $string['draggableitemno'] = 'Draggable Item {no}';
 $string['groups'] = 'Groups';
 
 $string['wronganswersheader'] = 'Wrong answers';
+$string['duplicate_groupname'] = 'The group name "{ $a }" is duplicated. Please provide unique names for all groups.';
+$string['groupname_empty_referenced'] = 'The group name is empty, but it is referenced in one or more answers.';
+$string['answer_empty_for_group'] = 'The answer cannot be empty if it is linked to a group.';
+$string['groupname_empty'] = 'The group name cannot be empty.';
+

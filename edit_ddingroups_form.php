@@ -73,27 +73,22 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $this->add_repeat_groups($mform, 'groups', $elements1, $options1);
         $mform->addHelpButton('groups', 'groups', 'qtype_ddingroups');
     
-        // Вычисляем количество групп.
+
         $groupsf = 0;
         $ggg = [];
-        $ggg[] = 1;
-        $ggg[] = optional_param('addgroupsscount', self::NUM_ITEMS_ADD, PARAM_INT); // Добавленные группы.
+        $ggg[]  = $mform->getElement('count'.'groups'.'s')->getValue(); 
+
         foreach ($ggg as $i) {
             $groupsf += (int)$i;
         }
     
-        // Получаем текущее количество групп.
-        $currentGroups = isset($mform->_defaultValues['groups']) ? count($mform->_defaultValues['groups']) : 0;
-        $groupsf += $currentGroups;
-    
         // Формируем массив групп для select.
         $groupsArray = ['1' => 'Wrong answer'];
         for ($i = 1; $i <= $groupsf; $i++) {
-            $groupsArray["$i-1"] = "Group $i"; // Ключ — строковый номер группы, значение — её описание.
+            $groupsArray["$i-1"] = "Group $i"; 
         }
     
-        // $mform->addElement('html', $PAGE->context);
-        // Добавляем заголовок для вариантов ответа.
+        
         $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
         $mform->setExpanded('answersheader', true);
     
@@ -421,17 +416,58 @@ class qtype_ddingroups_edit_form extends question_edit_form {
 
     public function validation($data, $files): array {
         $errors = [];
-
+        
         $minsubsetitems = qtype_ddingroups_question::MIN_SUBSET_ITEMS;
-        // Make sure the entered size of the subset is no less than the defined minimum.
+    
+        // Проверка: минимальное количество элементов подмножества.
         if ($data['selecttype'] != qtype_ddingroups_question::SELECT_ALL && $data['selectcount'] < $minsubsetitems) {
             $errors['selectcount'] = get_string('notenoughsubsetitems', 'qtype_ddingroups', $minsubsetitems);
         }
-
-        // Identify duplicates and report as an error.
+    
+        // Проверка на дубликаты названий групп (только для непустых названий).
+        if (!empty($data['groups'])) {
+            $groupNames = [];
+            foreach ($data['groups'] as $index => $groupName) {
+                $groupName = trim($groupName);
+                if (!empty($groupName)) { // Проверяем только непустые названия.
+                    if (in_array($groupName, $groupNames)) {
+                        $errors["groups[$index]"] = get_string('duplicate_groupname', 'qtype_ddingroups', $groupName);
+                    } else {
+                        $groupNames[] = $groupName;
+                    }
+                }
+            }
+        }
+    
+        // Проверка: нельзя оставить пустой ответ для группы, отличной от "Wrong answer".
+        if (!empty($data['answer'])) {
+            foreach ($data['answer'] as $index => $answer) {
+                $selectedGroup = $data['selectgroup'][$index] ?? '1'; // По умолчанию считаем "Wrong answer".
+                if ($selectedGroup !== '1') { // Если выбрана не группа "Wrong answer".
+                    if (empty(trim($answer['text'] ?? ''))) {
+                        $errors["answer[$index]"] = get_string('answer_empty_for_group', 'qtype_ddingroups');
+                    }
+                }
+            }
+        }
+    
+        // Проверка: названия групп на которые ссылаются варианты ответов.
+        if (!empty($data['answer']) && !empty($data['groups'])) {
+            foreach ($data['answer'] as $index => $answer) {
+                $selectedGroup = $data['selectgroup'][$index] ?? null;
+                if ($selectedGroup !== null && $selectedGroup !== '1') { // Если есть ссылка на группу.
+                    $groupNameIndex = (int)$selectedGroup - 1; // Индекс группы в массиве `groups`.
+                    if (empty(trim($data['groups'][$groupNameIndex] ?? ''))) {
+                        $errors["groups[$groupNameIndex]"] = get_string('groupname_empty_referenced', 'qtype_ddingroups');
+                    }
+                }
+            }
+        }
+    
+        // Проверка на дубликаты ответов.
         $answers = [];
         $answercount = 0;
-        foreach ($data['answer'] as $answer) {
+        foreach ($data['answer'] as $index => $answer) {
             if (is_array($answer)) {
                 $answer = $answer['text'];
             }
@@ -442,25 +478,21 @@ class qtype_ddingroups_edit_form extends question_edit_form {
                     $item = str_replace('{no}', $i + 1, $item);
                     $item = html_writer::link("#id_answer_$i", $item);
                     $a = (object) ['text' => $answer, 'item' => $item];
-                    $errors["answer[$answercount]"] = get_string('duplicatesnotallowed', 'qtype_ddingroups', $a);
+                    $errors["answer[$index]"] = get_string('duplicatesnotallowed', 'qtype_ddingroups', $a);
                 } else {
                     $answers[] = $answer;
                 }
                 $answercount++;
             }
         }
-
-        // If there are no answers provided, show error message under first 2 answer boxes
-        // If only 1 answer provided, show error message under second answer box.
-        if ($answercount < 2) {
-            $errors['answer[1]'] = get_string('notenoughanswers', 'qtype_ddingroups', 2);
+    
+        // Проверка: минимальное количество ответов.
 
             if ($answercount == 0) {
-                $errors['answer[0]'] = get_string('notenoughanswers', 'qtype_ddingroups', 2);
+                $errors['answer[0]'] = get_string('notenoughanswers', 'qtype_ddingroups', 1);
             }
-        }
-
-        // If adding a new ddingroups question, update defaults.
+    
+        // Если это новый вопрос, обновляем значения по умолчанию.
         if (empty($errors) && empty($data['id'])) {
             $fields = [
                 'layouttype', 'selecttype', 'selectcount',
@@ -472,9 +504,11 @@ class qtype_ddingroups_edit_form extends question_edit_form {
                 }
             }
         }
-
+    
         return $errors;
     }
+    
+    
 
     /**
      * Get array of countable item types
@@ -495,27 +529,6 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         }
         return $options;
     }
-
-
-    /**
- * Получает список групп с их названиями.
- *
- * @return array Возвращает массив вида [индекс => 'Индекс - Название группы'].
- */
-protected function get_groups_from_form(): array {
-    // Получаем данные о группах из переданных параметров формы.
-    $groupnames = optional_param_array('groupname', [], PARAM_TEXT); // Массив с названиями групп.
-    $groupsarray = [];
-
-    // Формируем массив: индекс группы => "Индекс - Название группы".
-    foreach ($groupnames as $index => $name) {
-        if (is_numeric($index) && is_string($name) && !empty($name)) {
-            $groupsarray[$index] = ($index + 1) . ' - ' . $name; // Формат: "1 - Название группы".
-        }
-    }
-
-    return $groupsarray;
-}
 
 
     
