@@ -13,120 +13,135 @@ class qtype_ddingroups extends question_type {
 
     public function extra_question_fields(): array {
         return [
-            'qtype_ddingroups_options','groupcount','gradingtype', 'showgrading',
+            'qtype_ddingroups_options', 'groupcount', 'gradingtype', 'showgrading', 'layouttype',
         ];
     }
+    
 
     protected function initialise_question_instance(question_definition $question, $questiondata): void {
-        global $CFG;
-
         parent::initialise_question_instance($question, $questiondata);
-
-        $question->answers = $questiondata->options->answers;
-        foreach ($question->answers as $answerid => $answer) {
-            $question->answers[$answerid]->md5key = 'ddingroups_item_' . md5(($CFG->passwordsaltmain ?? '') . $answer->answer);
+    
+        // Инициализация ответов (drag items).
+        $question->answers = [];
+        if (!empty($questiondata->options->dragitems)) {
+            foreach ($questiondata->options->dragitems as $item) {
+                $question->answers[$item->id] = (object)[
+                    'content' => $item->content,
+                    'contentformat' => $item->contentformat,
+                    'groupid' => $item->groupid,
+                ];
+            }
         }
-
+    
+        // Инициализация групп.
+        $question->groups = [];
+        if (!empty($questiondata->options->groups)) {
+            foreach ($questiondata->options->groups as $group) {
+                $question->groups[$group->groupnumber] = (object)[
+                    'content' => $group->content,
+                    'correctanswers' => $group->correctanswers, // Поле correctanswers из базы данных.
+                ];
+            }
+        }
+    
+        // Инициализация комбинированной обратной связи (если используется).
         $this->initialise_combined_feedback($question, $questiondata, true);
     }
+    
+    
+    
 
     public function save_defaults_for_new_questions(stdClass $fromform): void {
         parent::save_defaults_for_new_questions($fromform);
         $this->set_default_value('gradingtype', $fromform->gradingtype);
         $this->set_default_value('showgrading', $fromform->showgrading);
     }
-
     public function save_question_options($question): bool|stdClass {
         global $DB;
     
         $result = new stdClass();
         $context = $question->context;
     
-        // Remove empty answers.
-        $question->answer = array_filter($question->answer, [$this, 'is_not_blank']);
-        $question->answer = array_values($question->answer); // Make keys sequential.
+        // Удаляем старые записи.
+        $DB->delete_records('qtype_ddingroups_groups', ['questionid' => $question->id]);
+        $DB->delete_records('qtype_ddingroups_items', ['questionid' => $question->id]);
     
-        // Count how many answers we have.
-        $countanswers = count($question->answer);
+        // Инициализируем группы, начиная с группы "Wrong Answer".
+        $groupids = [];
+        $groupCorrectAnswers = [];
     
-        // Check at least two answers exist.
-        if ($countanswers < 2) {
-            $result->notice = get_string('notenoughanswers', 'qtype_ddingroups', '2');
-            return $result;
+        // Добавляем группу "Wrong Answer".
+        $wrongAnswerGroup = (object) [
+            'questionid' => $question->id,
+            'content' => 'Wrong Answer', // Название группы.
+            'groupnumber' => 0, // Номер группы "Wrong Answer" всегда 0.
+            'correctanswers' => 0, // Будет обновлено позже.
+        ];
+        $groupids[0] = $DB->insert_record('qtype_ddingroups_groups', $wrongAnswerGroup);
+        $groupCorrectAnswers[0] = 0; // Инициализируем счетчик правильных ответов.
+    
+        // Сохраняем остальные группы.
+        if (!empty($question->groups)) {
+            foreach ($question->groups as $index => $groupname) {
+                $groupname = trim($groupname);
+                $group = (object) [
+                    'questionid' => $question->id,
+                    'content' => $groupname,
+                    'groupnumber' => $index + 1, // Группы начинаются с 1 (после "Wrong Answer").
+                    'correctanswers' => 0, // Будет рассчитано позже.
+                ];
+                $groupids[$index + 1] = $DB->insert_record('qtype_ddingroups_groups', $group);
+                $groupCorrectAnswers[$index + 1] = 0; // Инициализируем счетчик правильных ответов.
+            }
         }
     
-        // Prepare feedback placeholders.
-        $question->feedback = range(1, $countanswers);
+        // Сохраняем элементы для перетаскивания (ответы).
+        if (!empty($question->answer)) {
+            foreach ($question->answer as $i => $answer) {
+                $answertext = trim($answer['text'] ?? '');
+                $answerformat = $answer['format'] ?? 0;
+                $groupid = $question->selectgroup[$i] ?? 0; // По умолчанию: группа "Wrong Answer".
     
-        if ($answerids = $DB->get_records('question_answers', ['question' => $question->id], 'id ASC', 'id,question')) {
-            $answerids = array_keys($answerids);
-        } else {
-            $answerids = [];
-        }
-    
-        // Insert all the new answers.
-        foreach ($question->answer as $i => $answer) {
-            $answertext = $answer['text'] ?? '';
-            $answerformat = $answer['format'] ?? 0;
-            $answeritemid = $answer['itemid'] ?? null;
-    
-            // Skip empty answers.
-            if (trim($answertext) === '') {
-                continue;
-            }
-    
-            // Prepare the $answer object.
-            $answer = (object) [
-                'question' => $question->id,
-                'fraction' => ($i + 1),
-                'answer' => $answertext,
-                'answerformat' => $answerformat,
-                'feedback' => '',
-                'feedbackformat' => FORMAT_MOODLE,
-            ];
-    
-            // Add/insert $answer into the database.
-            if ($answer->id = array_shift($answerids)) {
-                $DB->update_record('question_answers', $answer);
-            } else {
-                unset($answer->id);
-                $answer->id = $DB->insert_record('question_answers', $answer);
-            }
-    
-            // Copy files across from draft files area.
-            if ($answeritemid) {
-                $answertext = file_save_draft_area_files(
-                    $answeritemid, $context->id, 'question', 'answer', $answer->id,
-                    $this->fileoptions, $answertext
-                );
-                $DB->set_field('question_answers', 'answer', $answertext, ['id' => $answer->id]);
-            }
-    
-            // Save drag items to qtype_ddingroups_items table.
-            if (!empty($question->dragitems)) {
-                foreach ($question->dragitems as $item) {
-                    $item->questionid = $question->id;
-    
-                    if (empty($item->id)) {
-                        $DB->insert_record('qtype_ddingroups_items', $item);
-                    } else {
-                        $DB->update_record('qtype_ddingroups_items', $item);
-                    }
+                if ($answertext === '') {
+                    continue; // Пропускаем пустые ответы.
                 }
+    
+                // Проверяем, к какой группе привязан ответ.
+                $assignedGroupId = $groupids[$groupid] ?? $groupids[0]; // Если группа не найдена, относим к "Wrong Answer".
+    
+                // Если ответ привязан к группе, увеличиваем счетчик правильных ответов для этой группы.
+                if ($assignedGroupId !== $groupids[0]) { // Только для групп, кроме "Wrong Answer".
+                    $groupCorrectAnswers[$groupid]++;
+                }
+    
+                // Сохраняем элемент в таблицу `qtype_ddingroups_items`.
+                $item = (object) [
+                    'questionid' => $question->id,
+                    'content' => $answertext,
+                    'contentformat' => $answerformat,
+                    'groupid' => $assignedGroupId,
+                ];
+                $DB->insert_record('qtype_ddingroups_items', $item);
             }
         }
     
-        // Create $options for this ddingroups question.
+        // Обновляем поле `correctanswers` для каждой группы.
+        foreach ($groupids as $index => $groupid) {
+            $DB->set_field('qtype_ddingroups_groups', 'correctanswers', $groupCorrectAnswers[$index], ['id' => $groupid]);
+        }
+    
+        // Сохраняем настройки вопроса.
         $options = (object) [
             'questionid' => $question->id,
-            'groupcount' => $question->groupcount,
+            'groupcount' => count($groupids), // Количество групп (включая "Wrong Answer").
             'gradingtype' => $question->gradingtype,
             'showgrading' => $question->showgrading,
+            'layouttype' => $question->layouttype,
         ];
         $options = $this->save_combined_feedback_helper($options, $question, $context, true);
         $this->save_hints($question, true);
     
-        // Add/update $options for this ddingroups question.
+        // Добавляем или обновляем настройки в таблице `qtype_ddingroups_options`.
         if ($options->id = $DB->get_field('qtype_ddingroups_options', 'id', ['questionid' => $question->id])) {
             $DB->update_record('qtype_ddingroups_options', $options);
         } else {
@@ -134,38 +149,24 @@ class qtype_ddingroups extends question_type {
             $DB->insert_record('qtype_ddingroups_options', $options);
         }
     
-        // Delete old answer records, if any.
-        if (count($answerids)) {
-            $fs = get_file_storage();
-            foreach ($answerids as $answerid) {
-                $fs->delete_area_files($context->id, 'question', 'answer', $answerid);
-                $DB->delete_records('question_answers', ['id' => $answerid]);
-            }
-        }
-    
         return true;
     }
+    
 
     public function get_possible_responses($questiondata): array {
         $responseclasses = [];
-        $itemcount = count($questiondata->options->answers);
-
-        $position = 0;
         foreach ($questiondata->options->answers as $answer) {
-            $position += 1;
-            $classes = [];
-            for ($i = 1; $i <= $itemcount; $i++) {
-                $classes[$i] = new question_possible_response(
-                    get_string('positionx', 'qtype_ddingroups', $i),
-                    ($i === $position) / $itemcount);
-            }
-
-            $subqid = question_utils::to_plain_text($answer->answer, $answer->answerformat);
-            $subqid = core_text::substr($subqid, 0, 100); // Ensure not more than 100 chars.
-            $responseclasses[$subqid] = $classes;
+            $groupid = $answer->groupid;
+            $responseclasses[$answer->id] = [
+                $groupid => new question_possible_response(
+                    get_string('belongstogroup', 'qtype_ddingroups', $groupid),
+                    1.0 // Правильный ответ.
+                ),
+            ];
         }
         return $responseclasses;
     }
+    
     /**
      * Callback function for filtering answers with array_filter
      *
@@ -204,15 +205,12 @@ class qtype_ddingroups extends question_type {
 
     public function delete_question($questionid, $contextid): void {
         global $DB;
-    
-        // Delete associated options.
         $DB->delete_records('qtype_ddingroups_options', ['questionid' => $questionid]);
-    
-        // Delete drag items.
-        $DB->delete_records('qtype_ddingroups_items', ['questionid' => $questionid]);
-    
+        $DB->delete_records('qtype_ddingroups_groups', ['questionid' => $questionid]); // Удаляем группы.
+        $DB->delete_records('qtype_ddingroups_items', ['questionid' => $questionid]);  // Удаляем элементы.
         parent::delete_question($questionid, $contextid);
     }
+    
     /**
      * Import question from GIFT format
      *
@@ -224,132 +222,107 @@ class qtype_ddingroups extends question_type {
      */
     public function import_from_gift(array $lines, ?stdClass $question, qformat_gift $format, ?string $extra = null): bool|stdClass {
         global $CFG;
-        require_once($CFG->dirroot.'/question/type/ddingroups/question.php');
-
-        // Extract question info from GIFT file $lines.
-        $groupcount = '\d+';
-        $gradingtype = '(?:ABSOLUTE_POSITION|'.
-            'ABSOLUTE|ABS|'.
-            'RELATIVE_TO_CORRECT|'.
-            'RELATIVE|REL)?';
-        $showgrading = '(?:SHOW|TRUE|YES|1|HIDE|FALSE|NO|0)?';
-        $search = 
-            '('.$groupcount.')\s*'.
-            '('.$gradingtype.')\s*'.
-            '('.$showgrading.')\s*'.
-            '(.*?)\s*$/s';
-        // Item $1 the number of items to be shown.
-        // Item $2 the extraction/grading type.
-        // Item $3 the layout type.
-        // Item $4 the grading type.
-        // Item $5 show the grading details (SHOW/HIDE).
-        // Item $6 the numbering style (none/123/abc/...).
-        // Item $7 the lines of items to be ordered.
+        require_once($CFG->dirroot . '/question/type/ddingroups/question.php');
+    
+        // Проверяем, есть ли дополнительные данные.
         if (!$extra) {
-            return false; // Format not recognized.
+            return false; // Формат данных не распознан.
         }
+    
+        // Парсинг дополнительных данных.
+        $groupcount = '\d+';
+        $gradingtype = '(?:ABSOLUTE_POSITION|ABSOLUTE|RELATIVE_TO_CORRECT|RELATIVE)?';
+        $layouttype = '(?:HORIZONTAL|VERTICAL|H|V|1|0)?';
+        $showgrading = '(?:SHOW|HIDE|TRUE|FALSE|YES|NO|1|0)?';
+    
+        $search = 
+            '('.$groupcount.')\s*' .     // Количество групп.
+            '('.$gradingtype.')\s*' .   // Тип оценивания.
+            '('.$showgrading.')\s*' .   // Показывать оценивание.
+            '('.$layouttype.')\s*' .    // Тип макета.
+            '(.*?)\s*$/s';              // Остальные данные (ответы).
+    
         if (!preg_match($search, $extra, $matches)) {
-            return false; // Format not recognized.
+            return false; // Данные не соответствуют ожидаемому формату.
         }
-        $groupcount = trim($matches[1]);
+    
+        $groupcount = (int) trim($matches[1]);
         $gradingtype = trim($matches[2]);
         $showgrading = trim($matches[3]);
-
-        $answers = preg_split('/[\r\n]+/', $matches[4]);
-        $answers = array_filter($answers);
-
+        $layouttype = trim($matches[4]);
+        $answers_raw = trim($matches[5]);
+    
+        // Разделяем ответы по строкам.
+        $answers = preg_split('/[\r\n]+/', $answers_raw);
+        $answers = array_filter(array_map('trim', $answers)); // Удаляем пустые строки.
+    
+        // Если вопрос ещё не создан, создаём объект.
         if (empty($question)) {
             $text = implode(PHP_EOL, $lines);
             $text = trim($text);
-            if ($pos = strpos($text, '{')) {
-                $text = substr($text, 0, $pos);
-            }
-
-            // Extract name.
-            $name = false;
+            $name = null;
+    
+            // Извлечение имени вопроса.
             if (str_starts_with($text, '::')) {
                 $text = substr($text, 2);
                 $pos = strpos($text, '::');
-                if (is_numeric($pos)) {
+                if ($pos !== false) {
                     $name = substr($text, 0, $pos);
-                    $name = $format->clean_question_name($name);
-                    $text = trim(substr($text, $pos + 2));
+                    $text = substr($text, $pos + 2);
                 }
             }
-
-            // Extract question text format.
-            $format = FORMAT_MOODLE;
-            if (str_starts_with($text, '[')) {
-                $text = substr($text, 1);
-                $pos = strpos($text, ']');
-                if (is_numeric($pos)) {
-                    $format = substr($text, 0, $pos);
-                    switch ($format) {
-                        case 'html':
-                            $format = FORMAT_HTML;
-                            break;
-                        case 'plain':
-                            $format = FORMAT_PLAIN;
-                            break;
-                        case 'markdown':
-                            $format = FORMAT_MARKDOWN;
-                            break;
-                        case 'moodle':
-                            $format = FORMAT_MOODLE;
-                            break;
-                    }
-                    $text = trim(substr($text, $pos + 1)); // Remove name from text.
-                }
-            }
-
+    
+            // Извлечение текста вопроса.
+            $questiontext = trim($text);
             $question = new stdClass();
-            $question->name = $name;
-            $question->questiontext = $text;
-            $question->questiontextformat = $format;
-            $question->generalfeedback = '';
-            $question->generalfeedbackformat = FORMAT_MOODLE;
+            $question->name = $name ?? 'New question';
+            $question->questiontext = $questiontext;
+            $question->questiontextformat = FORMAT_HTML; // Формат по умолчанию.
         }
-
+    
+        // Устанавливаем основные настройки вопроса.
         $question->qtype = 'ddingroups';
-
-        if (is_numeric($groupcount) && $groupcount >= 2) {
-            $question->groupcount = intval($groupcount);
-        } else {
-            $question->groupcount = 2 ; // Default!
+        $question->groupcount = max(2, $groupcount); // Минимум 2 группы.
+        $question->gradingtype = strtoupper($gradingtype) === 'RELATIVE' ? 
+            qtype_ddingroups_question::GRADING_RELATIVE_TO_CORRECT :
+            qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION;
+        $question->showgrading = in_array(strtoupper($showgrading), ['SHOW', 'TRUE', 'YES', '1'], true) ? 1 : 0;
+        $question->layouttype = strtoupper($layouttype) === 'HORIZONTAL' ? 1 : 0;
+    
+        // Добавляем группы.
+        $question->groups = [];
+        $question->groups[0] = 'Wrong Answer'; // Первая группа - "Wrong Answer".
+        for ($i = 1; $i <= $question->groupcount; $i++) {
+            $question->groups[$i] = "Group $i"; // Имена по умолчанию, можно изменить.
         }
-        $this->set_options_for_import($question, $groupcount,  
-            $showgrading, $gradingtype);
-
-        // Remove blank items.
-        $answers = array_map('trim', $answers);
-        $answers = array_filter($answers); // Remove blanks.
-
-        // Set up answer arrays.
+    
+        // Привязываем ответы к группам.
         $question->answer = [];
-        $question->answerformat = [];
-        $question->fraction = [];
-        $question->feedback = [];
-        $question->feedbackformat = [];
-
-        // Note that "fraction" field is used to denote sort order
-        // "fraction" fields will be set to correct values later
-        // in the save_question_options() method of this class.
-
         foreach ($answers as $i => $answer) {
-            $question->answer[$i] = $answer;
-            $question->answerformat[$i] = FORMAT_MOODLE;
-            $question->fraction[$i] = 1; // Will be reset later in save_question_options().
-            $question->feedback[$i] = '';
-            $question->feedbackformat[$i] = FORMAT_MOODLE;
+            $parts = explode('|', $answer); // Формат ответа: "Текст|ID группы|Формат".
+            $answertext = trim($parts[0]);
+            $groupid = isset($parts[1]) ? (int) trim($parts[1]) : 0; // Если группы нет, "Wrong Answer".
+            $format = isset($parts[2]) ? strtolower(trim($parts[2])) : 'text'; // Формат по умолчанию.
+    
+            // Обработка формата.
+            $contentformat = match ($format) {
+                'html' => FORMAT_HTML,
+                'markdown' => FORMAT_MARKDOWN,
+                'plain' => FORMAT_PLAIN,
+                default => FORMAT_MOODLE, // Формат по умолчанию.
+            };
+    
+            $question->answer[$i] = [
+                'text' => $answertext,
+                'group' => $groupid,
+                'format' => $contentformat,
+            ];
         }
+    
         return $question;
-    }/**
-     * Given question object, returns array with array layouttype, selecttype, groupcount, gradingtype, showgrading
-     * where layouttype, selecttype, gradingtype and showgrading are string representations.
-     *
-     * @param stdClass $question
-     * @return array(layouttype, selecttype, groupcount, gradingtype, $showgrading, $numberingstyle)
-     */
+    }
+    
+    
     public function extract_options_for_export(stdClass $question): array {
         $gradingtype = match ($question->options->gradingtype) {
             qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION => 'ABSOLUTE_POSITION',
@@ -411,6 +384,7 @@ class qtype_ddingroups extends question_type {
             $this->extract_options_for_export($question);
 
         $output = '';
+        $output .= "    <layouttype>$layouttype</layouttype>\n";
         $output .= "    <groupcount>$groupcount</groupcount>\n";
         $output .= "    <gradingtype>$gradingtype</gradingtype>\n";
         $output .= "    <showgrading>$showgrading</showgrading>\n";
@@ -449,7 +423,7 @@ class qtype_ddingroups extends question_type {
     
         $newquestion = $format->import_headers($data);
         $newquestion->qtype = $questiontype;
-    
+        $layouttype = $format->getpath($data, ['#', 'layouttype', 0, '#'], 'VERTICAL');
         $groupcount = $format->getpath($data, ['#', 'groupcount', 0, '#'], 2);
         $gradingtype = $format->getpath($data, ['#', 'gradingtype', 0, '#'], 'RELATIVE');
         $showgrading = $format->getpath($data, ['#', 'showgrading', 0, '#'], '1');

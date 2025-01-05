@@ -2,29 +2,19 @@
 
 class qtype_ddingroups_question extends question_graded_automatically {
 
-    /** Select all answers */
-    const SELECT_ALL = 0;
     /** Select random set of answers */
     const SELECT_RANDOM = 1;
-    /** Select contiguous subset of answers */
-    const SELECT_CONTIGUOUS = 2;
 
     /** Show answers in vertical list */
     const LAYOUT_VERTICAL = 0;
     /** Show answers in one horizontal line */
     const LAYOUT_HORIZONTAL = 1;
 
-    /** The minimum number of items to create a subset */
-    const MIN_SUBSET_ITEMS = 2;
-
-    /** Default value for numberingstyle */
-    const NUMBERING_STYLE_DEFAULT = 'none';
-
     /** @var int Zero grade on any error */
     const GRADING_ABSOLUTE_POSITION = 0;
     /** @var int Every sequential pair in right order is graded (last pair is excluded) */
     const GRADING_RELATIVE_TO_CORRECT = 1;
-
+    const MIN_SUBSET_ITEMS = 2;
     /** @var int {@see LAYOUT_VERTICAL} or {@see LAYOUT_HORIZONTAL}. */
     public $layouttype;
 
@@ -33,11 +23,12 @@ class qtype_ddingroups_question extends question_graded_automatically {
     /** @var int Which grading strategy to use. One of the GRADING_... constants. */
     public $gradingtype;
 
+    public $groupcount;
+
+
+
     /** @var bool Should details of the grading calculation be shown to students. */
     public $showgrading;
-
-    /** @var string How to number the items. A key from the array returned by {@see get_numbering_styles()}. */
-    public $numberingstyle;
 
     // Fields from "qtype_ddingroups_options" table.
     /** @var string */
@@ -616,11 +607,6 @@ class qtype_ddingroups_question extends question_graded_automatically {
                     $maxscore = 1;
                 }
                 break;
-            
-
-            
-            
-
             case self::GRADING_RELATIVE_TO_CORRECT:
                 if (isset($correctresponse[$position])) {
                     $maxscore = (count($correctresponse) - 1);
@@ -656,10 +642,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
                 $correctresponse = $this->correctresponse;
                 $currentresponse = $this->currentresponse;
                 break;
-
-            
         }
-
         return [$correctresponse, $currentresponse];
     }
 

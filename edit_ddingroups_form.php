@@ -18,7 +18,6 @@ class qtype_ddingroups_edit_form extends question_edit_form {
 
     /** Minimum number of answers to show */
     const NUM_ITEMS_MIN = 1;
-
     /** Number of answers to add on demand */
     const NUM_ITEMS_ADD = 1;
     const GROUPS = 1;
@@ -70,7 +69,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $elements1[] = $mform->createElement('text', 'groups', get_string('groupno', 'qtype_ddingroups'));
         $elements1[] = $mform->createElement('html', '<hr>');
         $options1['groups'] = ['type' => PARAM_RAW];
-        $this->add_repeat_groups($mform, 'groups', $elements1, $options1);
+        $this->add_repeat_elements($mform, 'groups', $elements1, $options1);
         $mform->addHelpButton('groups', 'groups', 'qtype_ddingroups');
     
 
@@ -89,9 +88,10 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         }
     
         
+        
         $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
         $mform->setExpanded('answersheader', true);
-    
+       
         // Поля для вариантов ответа.
         $elements = [];
         $options = [];
@@ -103,7 +103,6 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $elements[] = $mform->createElement('select', 'selectgroup', get_string('selectforgroup', 'qtype_ddingroups'), $groupsArray);
         $elements[] = $mform->createElement('html', '<hr>');
         $this->add_repeat_elements($mform, 'answer', $elements, $options);
-    
         // Настройка редакторов HTML.
         $this->adjust_html_editors($mform, 'answer');
     
@@ -147,39 +146,6 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         $mform->setDefault($addtypescount, $count);
         $mform->setType($addtypescount, PARAM_INT);
     }
-    protected function add_repeat_groups(MoodleQuickForm $mform, string $type, array $elements, array $options): void {
-
-        // Cache element names.
-        $types = $type.'s';
-        $addtypes = 'add'.$types;
-        $counttypes = 'count'.$types;
-        $addtypescount = $addtypes.'count';
-        $addtypesgroup = $addtypes.'group';
-
-        $repeats = $this->get_answer_repeats($this->question);
-
-        $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
-        
-        $label = ($count == 1 ? 'addsingle'.$type : 'addmultiple'.$types);
-        $label = get_string($label, 'qtype_ddingroups', $count);
-
-        $this->repeat_elements($elements, $repeats, $options, $counttypes, $addtypes, $count, $label, true);
-
-        // Remove the original "Add xxx" button ...
-        $mform->removeElement($addtypes);
-
-        // ... and replace it with "Add" button + select group.
-        $options = $this->get_addcount_options($type);
-        $mform->addGroup([
-            $mform->createElement('submit', $addtypes, get_string('add')),
-            $mform->createElement('select', $addtypescount, '', $options),
-        ], $addtypesgroup, '', ' ', false);
-
-        // Set default value and type of select element.
-        $mform->setDefault($addtypescount, $count);
-        $mform->setType($addtypescount, PARAM_INT);
-    }
-    
     
 
     
@@ -417,13 +383,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
     public function validation($data, $files): array {
         $errors = [];
         
-        $minsubsetitems = qtype_ddingroups_question::MIN_SUBSET_ITEMS;
-    
-        // Проверка: минимальное количество элементов подмножества.
-        if ($data['selecttype'] != qtype_ddingroups_question::SELECT_ALL && $data['selectcount'] < $minsubsetitems) {
-            $errors['selectcount'] = get_string('notenoughsubsetitems', 'qtype_ddingroups', $minsubsetitems);
-        }
-    
+
         // Проверка на дубликаты названий групп (только для непустых названий).
         if (!empty($data['groups'])) {
             $groupNames = [];
@@ -485,7 +445,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
                 $answercount++;
             }
         }
-    
+       
         // Проверка: минимальное количество ответов.
 
             if ($answercount == 0) {

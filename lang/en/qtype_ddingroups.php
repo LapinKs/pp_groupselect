@@ -127,7 +127,7 @@ $string['draggableitemno'] = 'Draggable Item {no}';
 $string['groups'] = 'Groups';
 
 $string['wronganswersheader'] = 'Wrong answers';
-$string['duplicate_groupname'] = 'The group name "{ $a }" is duplicated. Please provide unique names for all groups.';
+$string['duplicate_groupname'] = 'The group name is duplicated. Please provide unique names for all groups.';
 $string['groupname_empty_referenced'] = 'The group name is empty, but it is referenced in one or more answers.';
 $string['answer_empty_for_group'] = 'The answer cannot be empty if it is linked to a group.';
 $string['groupname_empty'] = 'The group name cannot be empty.';
