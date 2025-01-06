@@ -84,7 +84,7 @@ class qtype_ddingroups_edit_form extends question_edit_form {
         // Формируем массив групп для select.
         $groupsArray = ['1' => 'Wrong answer'];
         for ($i = 1; $i <= $groupsf; $i++) {
-            $groupsArray["$i-1"] = "Group $i"; 
+            $groupsArray["$i+1"] = "Group $i"; 
         }
     
         
