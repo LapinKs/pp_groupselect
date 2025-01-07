@@ -1,19 +1,4 @@
-{{!
-    This file is part of Moodle - http://moodle.org/
 
-    Moodle is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    Moodle is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-}}
 {{!
     @template qtype_ddingroups/formulation_and_controls
 
@@ -59,24 +44,24 @@
         ]
     }
 }}
-
 <div class="qtext">
     {{{questiontext}}}
     {{#responsename}}
-        <div id="{{ablockid}}" class="ablock">
+        <!-- Общий бокс для всех элементов -->
+        <div class="ablock" id="general-box">
             <div class="answer ddingroups">
+                <div aria-live="polite" class="sr-only" id="{{sortableid}}-announcement"></div>
                 <ul class="sortablelist {{layoutclass}}" id="{{sortableid}}">
                     {{#answers}}
                         <li class="p-2 {{^readonly}}sortableitem{{/readonly}} {{scoreclass}}" id="{{id}}">
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex">
                                 {{^readonly}}
-                                <div class="grip px-2">
-                                    <i class="fas fa-grip-vertical" aria-hidden="true"></i>
-                                </div>
+                                    <div class="d-flex p-2 grip">
+                                        <i class="fas fa-grip-vertical" aria-hidden="true"></i>
+                                    </div>
                                 {{/readonly}}
-                                <div class="flex-grow-1 px-2">
-                                    {{{answertext}}}
-                                    {{{feedbackimage}}}
+                                <div class="d-flex align-items-center flex-grow-1 px-2" id="{{id}}-text" data-itemcontent>
+                                    {{{feedbackimage}}} {{{answertext}}}
                                 </div>
                             </div>
                         </li>
@@ -84,13 +69,47 @@
                 </ul>
             </div>
         </div>
-        <input type="hidden" name="{{responsename}}" id="{{responseid}}" value="{{value}}">
+
+        <!-- Боксы для групп -->
+        {{#groups}}
+        <div class="group-box" id="{{groupid}}">
+            <h3>{{groupname}}</h3>
+            <ul class="sortablelist">
+                {{#items}}
+                    <li class="sortableitem" id="{{id}}">
+                        {{{answertext}}}
+                    </li>
+                {{/items}}
+            </ul>
+        </div>
+        {{/groups}}
+
+        <!-- Непривязанные элементы -->
+        <div class="unassigned-box">
+            <h3>Unassigned Items</h3>
+            <ul class="sortablelist" id="unassigned-box">
+                {{#unassigned}}
+                    <li class="sortableitem" id="{{id}}">
+                        {{{answertext}}}
+                    </li>
+                {{/unassigned}}
+            </ul>
+        </div>
+
+        <input name="{{responsename}}" id="{{responseid}}" type="hidden" value="{{value}}"/>
     {{/responsename}}
 </div>
+
 {{^readonly}}
     {{#js}}
-        require(['qtype_ddingroups/dragcontroller'], function(dragcontroller) {
-            dragcontroller.init('{{sortableid}}', '{{responseid}}');
+        require(['qtype_ddingroups/dragreorder'], function(dragreorder) {
+            dragreorder.init({
+                lists: ['general-box', 'unassigned-box', {{#groups}}'{{groupid}}',{{/groups}}],
+                responseid: '{{responseid}}'
+            });
         });
     {{/js}}
 {{/readonly}}
+
+
+

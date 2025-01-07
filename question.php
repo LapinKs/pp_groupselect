@@ -2,78 +2,73 @@
 
 class qtype_ddingroups_question extends question_graded_automatically {
 
-    /** Select random set of answers */
-    const SELECT_RANDOM = 1;
-
-    /** Show answers in vertical list */
     const LAYOUT_VERTICAL = 0;
-    /** Show answers in one horizontal line */
     const LAYOUT_HORIZONTAL = 1;
 
-    /** @var int Zero grade on any error */
+
     const GRADING_ABSOLUTE_POSITION = 0;
-    /** @var int Every sequential pair in right order is graded (last pair is excluded) */
+
     const GRADING_RELATIVE_TO_CORRECT = 1;
     const MIN_SUBSET_ITEMS = 2;
-    /** @var int {@see LAYOUT_VERTICAL} or {@see LAYOUT_HORIZONTAL}. */
+
     public $layouttype;
 
-    /** @var int {@see SELECT_ALL}, {@see SELECT_RANDOM} or {@see SELECT_CONTIGUOUS}. */
 
-    /** @var int Which grading strategy to use. One of the GRADING_... constants. */
     public $gradingtype;
 
     public $groupcount;
 
 
 
-    /** @var bool Should details of the grading calculation be shown to students. */
     public $showgrading;
 
-    // Fields from "qtype_ddingroups_options" table.
-    /** @var string */
+  
     public $correctfeedback;
-    /** @var int */
+
     public $correctfeedbackformat;
-    /** @var string */
+
     public $incorrectfeedback;
-    /** @var int */
+
     public $incorrectfeedbackformat;
-    /** @var string */
+  
     public $partiallycorrectfeedback;
-    /** @var int */
+ 
     public $partiallycorrectfeedbackformat;
 
-    /** @var array Records from "question_answers" table */
+
     public $answers;
 
-    /** @var array of answerids in correct order */
     public $correctresponse;
 
-    /** @var array contatining current order of answerids */
+ 
     public $currentresponse;
 
-    /** @var array of scored for every item */
+ 
     protected $itemscores = [];
 
     public function start_attempt(question_attempt_step $step, $variant) {
-        $countanswers = count($this->answers);
-
-
-
-        // Ensure consistency between "selecttype" and "selectcount".
-
-        // Extract answer ids.
-
-         $answerids = array_keys($this->answers);
-
-        $this->correctresponse = $answerids;
-        $step->set_qt_var('_correctresponse', implode(',', $this->correctresponse));
-
-        shuffle($answerids);
-        $this->currentresponse = $answerids;
-        $step->set_qt_var('_currentresponse', implode(',', $this->currentresponse));
+        // Сохраняем корректный ответ с привязкой к группам.
+        $this->correctresponse = [];
+        foreach ($this->answers as $answerid => $answer) {
+            $this->correctresponse[$answerid] = $answer->groupid ?? 0; // Привязываем к группе или к "непривязанной".
+        }
+        $step->set_qt_var('_correctresponse', json_encode($this->correctresponse));
+    
+        // Генерируем случайный начальный ответ.
+        $shuffledanswers = array_keys($this->answers);
+        shuffle($shuffledanswers);
+        $this->currentresponse = [];
+        foreach ($shuffledanswers as $answerid) {
+            $this->currentresponse[$answerid] = 0; // Все ответы начинаются в непривязанной группе.
+        }
+        $step->set_qt_var('_currentresponse', json_encode($this->currentresponse));
     }
+    
+    public function apply_attempt_state(question_attempt_step $step) {
+        $this->correctresponse = json_decode($step->get_qt_var('_correctresponse'), true) ?? [];
+        $this->currentresponse = json_decode($step->get_qt_var('_currentresponse'), true) ?? [];
+    }
+    
 
     public function apply_attempt_state(question_attempt_step $step) {
         $this->currentresponse = array_filter(explode(',', $step->get_qt_var('_currentresponse')));
@@ -123,7 +118,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
             case self::LAYOUT_HORIZONTAL:
                 return 'horizontal';
             default:
-                return ''; // Shouldn't happen!
+                return '';
         }
     }
     public static function get_layout_types(?int $type = null): array|string {
@@ -140,14 +135,17 @@ class qtype_ddingroups_question extends question_graded_automatically {
     }
 
     public function get_correct_response() {
-        $correctresponse = $this->correctresponse;
-        foreach ($correctresponse as $position => $answerid) {
-            $answer = $this->answers[$answerid];
-            $correctresponse[$position] = $answer->md5key;
+        $response = [];
+        foreach ($this->correctresponse as $answerid => $groupid) {
+            $response[] = [
+                'item' => $this->answers[$answerid]->md5key,
+                'group' => $groupid,
+            ];
         }
         $name = $this->get_response_fieldname();
-        return [$name => implode(',', $correctresponse)];
+        return [$name => json_encode($response)];
     }
+    
 
     public function summarise_response(array $response) {
         $name = $this->get_response_fieldname();
@@ -163,10 +161,10 @@ class qtype_ddingroups_question extends question_graded_automatically {
             if (array_key_exists($item, $answerids)) {
                 $item = $this->answers[$answerids[$item]];
                 $item = $this->html_to_text($item->answer, $item->answerformat);
-                $item = shorten_text($item, 10, true); // Force truncate at 10 chars.
+                $item = shorten_text($item, 10, true); 
                 $items[$i] = $item;
             } else {
-                $items[$i] = ''; // Shouldn't happen!
+                $items[$i] = ''; 
             }
         }
         return implode('; ', array_filter($items));
@@ -185,12 +183,10 @@ class qtype_ddingroups_question extends question_graded_automatically {
             $answer = $this->answers[$answerid];
             $subqid = question_utils::to_plain_text($answer->answer, $answer->answerformat);
 
-            // Truncate responses longer than 100 bytes because they cannot be stored in the database.
-            // CAUTION: This will mess up answers which are not unique within the first 100 chars!
+
             $maxbytes = 100;
             if (strlen($subqid) > $maxbytes) {
-                // If the truncation point is in the middle of a multi-byte unicode char,
-                // we remove the incomplete part with a preg_match() that is unicode aware.
+ 
                 $subqid = substr($subqid, 0, $maxbytes);
                 if (preg_match('/^(.|\n)*/u', '', $subqid, $match)) {
                     $subqid = $match[0];
@@ -303,47 +299,33 @@ class qtype_ddingroups_question extends question_graded_automatically {
         }
     }
 
-    // Custom methods.
-
-    /**
-     * Returns response mform field name
-     *
-     * @return string
-     */
     public function get_response_fieldname(): string {
         return 'response_' . $this->id;
     }
 
-    /**
-     * Unpack the students' response into an array which updates the question currentresponse.
-     *
-     * @param array $response Form data
-     */
     public function update_current_response(array $response) {
         $name = $this->get_response_fieldname();
+        $this->currentresponse = []; // Сбрасываем текущий ответ.
+    
         if (array_key_exists($name, $response)) {
-            $ids = explode(',', $response[$name]);
-            foreach ($ids as $i => $id) {
-                foreach ($this->answers as $answer) {
-                    if ($id == $answer->md5key) {
-                        $ids[$i] = $answer->id;
-                        break;
+            // Разбиваем сохраненные данные по группам.
+            $groupData = explode('|', $response[$name]); // Предположим, группы разделены символом `|`
+            foreach ($groupData as $groupid => $groupItems) {
+                $itemIds = explode(',', $groupItems); // Элементы в группе разделены запятой.
+                foreach ($itemIds as $itemKey) {
+                    // Сопоставляем MD5-ключи с ID ответов.
+                    foreach ($this->answers as $answer) {
+                        if ($itemKey == $answer->md5key) {
+                            $this->currentresponse[$answer->id] = $groupid; // Привязываем элемент к группе.
+                            break;
+                        }
                     }
                 }
             }
-            // Note: TH mentions that this is a bit of a hack.
-            $this->currentresponse = $ids;
         }
     }
+    
 
-
-    /**
-     * Returns array of next answers
-     *
-     * @param array $answerids array of answers id
-     * @param bool $lastitem Include last item?
-     * @return array of id of next answer
-     */
     public function get_next_answerids(array $answerids, bool $lastitem = false): array {
         $nextanswerids = [];
         $imax = count($answerids);
@@ -362,13 +344,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
         return $nextanswerids;
     }
 
-    /**
-     * Returns prev and next answers array
-     *
-     * @param array $answerids array of answers id
-     * @param bool $all include all answers
-     * @return array of array('prev' => previd, 'next' => nextid)
-     */
+
     public function get_previous_and_next_answerids(array $answerids, bool $all = false): array {
         $prevnextanswerids = [];
         $next = $answerids;
@@ -390,23 +366,15 @@ class qtype_ddingroups_question extends question_graded_automatically {
         return $prevnextanswerids;
     }
 
-    /**
-     * Search for best ordered subset
-     *
-     * @param bool $contiguous A flag indicating whether only contiguous values should be considered for inclusion in the subset.
-     * @return array
-     */
+
     public function get_ordered_subset(bool $contiguous): array {
 
         $positions = $this->get_ordered_positions($this->correctresponse, $this->currentresponse);
         $subsets = $this->get_ordered_subsets($positions, $contiguous);
 
-        // The best subset (longest and leftmost).
+
         $bestsubset = [];
 
-        // The length of the best subset
-        // initializing this to 1 means
-        // we ignore single item subsets.
         $bestcount = 1;
 
         foreach ($subsets as $subset) {
@@ -419,13 +387,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
         return $bestsubset;
     }
 
-    /**
-     * Get array of right answer positions for current response
-     *
-     * @param array $correctresponse
-     * @param array $currentresponse
-     * @return array
-     */
+
     public function get_ordered_positions(array $correctresponse, array $currentresponse): array {
         $positions = [];
         foreach ($currentresponse as $answerid) {
@@ -442,50 +404,38 @@ class qtype_ddingroups_question extends question_graded_automatically {
         ];
         return self::get_types($types, $type);
     }
-    /**
-     * Get all ordered subsets in the positions array
-     *
-     * @param array $positions maps an item's current position to its correct position
-     * @param bool $contiguous TRUE if searching only for contiguous subsets; otherwise FALSE
-     * @return array of ordered subsets from within the $positions array
-     */
+
     public function get_ordered_subsets(array $positions, bool $contiguous): array {
 
-        // Var $subsets is the collection of all subsets within $positions.
+ 
         $subsets = [];
 
-        // Loop through the values at each position.
+ 
         foreach ($positions as $p => $value) {
 
-            // Is $value a "new" value that cannot be added to any $subsets found so far?
             $isnew = true;
 
-            // An array of new and saved subsets to be added to $subsets.
             $new = [];
 
-            // Append the current value to any subsets to which it belongs
-            // i.e. any subset whose end value is less than the current value.
             foreach ($subsets as $s => $subset) {
 
-                // Get value at end of $subset.
+ 
                 $end = $positions[end($subset)];
 
                 switch (true) {
 
                     case ($value == ($end + 1)):
-                        // For a contiguous value, we simply append $p to the subset.
+                  
                         $isnew = false;
                         $subsets[$s][] = $p;
                         break;
 
                     case $contiguous:
-                        // If the $contiguous flag is set, we ignore non-contiguous values.
+               
                         break;
 
                     case ($value > $end):
-                        // For a non-contiguous value, we save the subset so far,
-                        // because a value between $end and $value may be found later,
-                        // and then append $p to the subset.
+                   
                         $isnew = false;
                         $new[] = $subset;
                         $subsets[$s][] = $p;
@@ -493,12 +443,11 @@ class qtype_ddingroups_question extends question_graded_automatically {
                 }
             }
 
-            // If this is a "new" value, add it as a new subset.
+   
             if ($isnew) {
                 $new[] = [$p];
             }
 
-            // Append any "new" subsets that were found during this iteration.
             if (count($new)) {
                 $subsets = array_merge($subsets, $new);
             }
@@ -507,15 +456,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
         return $subsets;
     }
 
-    /**
-     * Helper function for get_select_types, get_layout_types, get_grading_types
-     *
-     * @param array $types
-     * @param int $type
-     * @return array|string array if $type is not specified and single string if $type is specified
-     * @throws coding_exception
-     * @codeCoverageIgnore
-     */
+ 
     public static function get_types(array $types, $type): array|string {
         if ($type === null) {
             return $types; // Return all $types.
@@ -528,26 +469,6 @@ class qtype_ddingroups_question extends question_graded_automatically {
     }
 
 
-    public static function get_numbering_styles(?string $style = null): array|string {
-        $plugin = 'qtype_ddingroups';
-        $styles = [
-            'none' => get_string('numberingstylenone', $plugin),
-            'abc' => get_string('numberingstyleabc', $plugin),
-            'ABCD' => get_string('numberingstyleABCD', $plugin),
-            '123' => get_string('numberingstyle123', $plugin),
-            'iii' => get_string('numberingstyleiii', $plugin),
-            'IIII' => get_string('numberingstyleIIII', $plugin),
-        ];
-        return self::get_types($styles, $style);
-    }
-
-    /**
-     * Return the number of subparts of this response that are correct|partial|incorrect.
-     *
-     * @param array $response A response.
-     * @return array Array of three elements: the number of correct subparts,
-     * the number of partial correct subparts and the number of incorrect subparts.
-     */
     public function get_num_parts_right(array $response): array {
         $this->update_current_response($response);
         $gradingtype = $this->gradingtype;
@@ -578,15 +499,6 @@ class qtype_ddingroups_question extends question_graded_automatically {
 
 
 
-    /**
-     * Returns the grade for one item, base on the fraction scale.
-     *
-     * @param int $position The position of the current response.
-     * @param int $answerid The answerid of the current response.
-     * @param array $correctresponse The correct response list base on grading type.
-     * @param array $currentresponse The current response list base on grading type.
-     * @return array.
-     */
     protected function get_fraction_maxscore_score_of_item(
         int $position,
         int $answerid,
@@ -626,12 +538,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
     }
     
 
-    /**
-     * Get correcresponse and currentinfo depending on grading type.
-     *
-     * @param string $gradingtype The kind of grading.
-     * @return array Correctresponse and currentresponsescore in one array.
-     */
+    
     protected function get_response_depend_on_grading_type(string $gradingtype): array {
 
         $correctresponse = [];
@@ -647,14 +554,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
     }
 
 
-    /**
-     * Returns score for one item depending on correctness and question settings.
-     *
-     * @param question_definition $question question definition object
-     * @param int $position The position of the current response.
-     * @param int $answerid The answerid of the current response.
-     * @return array (score, maxscore, fraction, percent, class)
-     */
+  
     public function get_ddingroups_item_score(question_definition $question, int $position, int $answerid): array {
 
         if (!isset($this->itemscores[$position])) {
@@ -666,10 +566,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
                 $this->get_fraction_maxscore_score_of_item($position, $answerid, $correctresponse, $currentresponse);
 
             if ($maxscore === null) {
-                // An unscored item is either an illegal item
-                // or last item of RELATIVE_NEXT_EXCLUDE_LAST
-                // or an item in an incorrect ALL_OR_NOTHING
-                // or an item from an unrecognized grading type.
+
                 $class = 'unscored';
             } else {
                 if ($maxscore > 0) {

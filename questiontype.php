@@ -56,106 +56,109 @@ class qtype_ddingroups extends question_type {
         $this->set_default_value('gradingtype', $fromform->gradingtype);
         $this->set_default_value('showgrading', $fromform->showgrading);
     }
-   public function save_question_options($question): bool|stdClass {
-    global $DB;
-
-    $result = new stdClass();
-    $context = $question->context;
-
-    // Удаляем старые записи.
-    $DB->delete_records('qtype_ddingroups_groups', ['questionid' => $question->id]);
-    $DB->delete_records('qtype_ddingroups_items', ['questionid' => $question->id]);
-
-    // Инициализируем группы, включая "Wrong Answer".
-    $groupids = [];
-    $groupCorrectAnswers = [];
-
-    // Добавляем группу "Wrong Answer".
-    $wrongAnswerGroup = (object) [
-        'questionid' => $question->id,
-        'content' => 'Wrong Answer', // Название группы.
-        'groupnumber' => 0, // Номер группы "Wrong Answer" всегда 0.
-        'correctanswers' => 0, // Будет обновлено позже.
-    ];
-    $groupids[0] = $DB->insert_record('qtype_ddingroups_groups', $wrongAnswerGroup);
-    $groupCorrectAnswers[0] = 0; // Инициализируем счётчик правильных ответов.
-
-    // Сохраняем остальные группы.
-    if (!empty($question->groups)) {
-        foreach ($question->groups as $index => $groupname) {
-            $groupname = trim($groupname);
-            $group = (object) [
-                'questionid' => $question->id,
-                'content' => $groupname,
-                'groupnumber' => $index + 1, // Группы начинаются с 1 (после "Wrong Answer").
-                'correctanswers' => 0, // Будет рассчитано позже.
-            ];
-            $groupids[$index + 1] = $DB->insert_record('qtype_ddingroups_groups', $group);
-            $groupCorrectAnswers[$index + 1] = 0; // Инициализируем счётчик правильных ответов.
-        }
-    }
-
-    // Сохраняем элементы для перетаскивания (ответы).
-    if (!empty($question->answer)) {
-        foreach ($question->answer as $i => $answer) {
-            $answertext = trim($answer['text'] ?? '');
-            $answerformat = $answer['format'] ?? 0;
-            $groupnumber = $question->selectgroup[$i] ?? 0; // Номер группы для ответа.
-
-            if ($answertext === '') {
-                continue; // Пропускаем пустые ответы.
+    public function save_question_options($question): bool|stdClass {
+        global $DB;
+    
+        $result = new stdClass();
+        $context = $question->context;
+    
+        // Удаляем старые записи.
+        $DB->delete_records('qtype_ddingroups_groups', ['questionid' => $question->id]);
+        $DB->delete_records('qtype_ddingroups_items', ['questionid' => $question->id]);
+        error_log("Saving question options for question ID: " . $question->id);
+        // Инициализируем группы, включая "Wrong Answer".
+        $groupids = [];
+        $groupCorrectAnswers = [];
+    
+        // Добавляем группу "Wrong Answer".
+        // $wrongAnswerGroup = (object) [
+        //     'questionid' => $question->id,
+        //     'content' => 'Wrong Answer', // Название группы.
+        //     'groupnumber' => 0, // Номер группы "Wrong Answer" всегда 0.
+        //     'correctanswers' => 0, // Будет обновлено позже.
+        // ];
+        // $groupids[0] = $DB->insert_record('qtype_ddingroups_groups', $wrongAnswerGroup);
+        // $groupCorrectAnswers[0] = 0; // Инициализируем счётчик правильных ответов.
+    
+        // Сохраняем остальные группы.
+        if (!empty($question->groups)) {
+            foreach ($question->groups as $index => $groupname) {
+                $groupname = trim($groupname);
+                if ($groupname === '') {
+                    continue; // Пропускаем пустые ответы.
+                }
+                $group = (object) [
+                    'questionid' => $question->id,
+                    'content' => $groupname,
+                    'groupnumber' => $index + 1, // Группы начинаются с 1 (после "Wrong Answer").
+                    'correctanswers' => 0, // Будет рассчитано позже.
+                ];
+                $groupids[$index + 1] = $DB->insert_record('qtype_ddingroups_groups', $group);
+                $groupCorrectAnswers[$index + 1] = 0; // Инициализируем счётчик правильных ответов.
             }
-
-            // Определяем ID группы, к которой принадлежит ответ.
-            if (array_key_exists($groupnumber, $groupids)) {
-                $assignedGroupId = $groupids[$groupnumber]; // Найденная группа.
-            } else {
-                $assignedGroupId = $groupids[0]; // Если группа не найдена, относим к "Wrong Answer".
-                $groupnumber = 0; // Устанавливаем "Wrong Answer" как группу по умолчанию.
-            }
-
-            // Увеличиваем счётчик правильных ответов для группы.
-            $groupCorrectAnswers[$groupnumber]++;
-
-            // Сохраняем элемент в таблицу `qtype_ddingroups_items`.
-            $item = (object) [
-                'questionid' => $question->id,
-                'content' => $answertext,
-                'contentformat' => $answerformat,
-                'groupid' => $assignedGroupId, // Привязка к группе.
-                'sortorder' => $i, // Порядок элемента.
-            ];
-            $DB->insert_record('qtype_ddingroups_items', $item);
         }
+    
+        // Сохраняем элементы для перетаскивания (ответы).
+        if (!empty($question->answer)) {
+            foreach ($question->answer as $i => $answer) {
+                $answertext = trim($answer['text'] ?? '');
+                $answerformat = $answer['format'] ?? 0;
+                $groupnumber = $question->selectgroup[$i] ?? 0; // Номер группы для ответа.
+    
+                if ($answertext === '') {
+                    continue; // Пропускаем пустые ответы.
+                }
+                $groupIndex = (int)$groupnumber;
+                // Определяем ID группы, к которой принадлежит ответ.
+                if (array_key_exists($groupnumber, $groupids)) {
+                    $assignedGroupId = $groupids[$groupnumber]; // Найденная группа.
+                } else {
+                    $assignedGroupId = $groupids[0]; // Если группа не найдена, относим к "Wrong Answer".
+                    $groupnumber = 0; // Устанавливаем "Wrong Answer" как группу по умолчанию.
+                }
+    
+                // Увеличиваем счётчик правильных ответов для группы.
+                $groupCorrectAnswers[$groupnumber]++;
+    
+                // Сохраняем элемент в таблицу `qtype_ddingroups_items`.
+                $item = (object) [
+                    'questionid' => $question->id,
+                    'content' => $answertext,
+                    'contentformat' => $answerformat,
+                    'groupid' => $assignedGroupId, // Привязка к группе.
+                    'sortorder' => $i, // Порядок элемента.
+                ];
+                $DB->insert_record('qtype_ddingroups_items', $item);
+            }
+        }
+    
+        // Обновляем поле `correctanswers` для каждой группы.
+        foreach ($groupids as $groupnumber => $groupid) {
+            $correctCount = $groupCorrectAnswers[$groupnumber] ?? 0;
+            $DB->set_field('qtype_ddingroups_groups', 'correctanswers', $correctCount, ['id' => $groupid]);
+        }
+    
+        // Сохраняем настройки вопроса.
+        $options = (object) [
+            'questionid' => $question->id,
+            'groupcount' => count($groupids), // Количество групп (включая "Wrong Answer").
+            'gradingtype' => $question->gradingtype,
+            'showgrading' => $question->showgrading,
+            'layouttype' => $question->layouttype,
+        ];
+        $options = $this->save_combined_feedback_helper($options, $question, $context, true);
+        $this->save_hints($question, true);
+    
+        // Добавляем или обновляем настройки в таблице `qtype_ddingroups_options`.
+        if ($options->id = $DB->get_field('qtype_ddingroups_options', 'id', ['questionid' => $question->id])) {
+            $DB->update_record('qtype_ddingroups_options', $options);
+        } else {
+            unset($options->id);
+            $DB->insert_record('qtype_ddingroups_options', $options);
+        }
+    
+        return true;
     }
-
-    // Обновляем поле `correctanswers` для каждой группы.
-    foreach ($groupids as $groupnumber => $groupid) {
-        $correctCount = $groupCorrectAnswers[$groupnumber] ?? 0;
-        $DB->set_field('qtype_ddingroups_groups', 'correctanswers', $correctCount, ['id' => $groupid]);
-    }
-
-    // Сохраняем настройки вопроса.
-    $options = (object) [
-        'questionid' => $question->id,
-        'groupcount' => count($groupids), // Количество групп (включая "Wrong Answer").
-        'gradingtype' => $question->gradingtype,
-        'showgrading' => $question->showgrading,
-        'layouttype' => $question->layouttype,
-    ];
-    $options = $this->save_combined_feedback_helper($options, $question, $context, true);
-    $this->save_hints($question, true);
-
-    // Добавляем или обновляем настройки в таблице `qtype_ddingroups_options`.
-    if ($options->id = $DB->get_field('qtype_ddingroups_options', 'id', ['questionid' => $question->id])) {
-        $DB->update_record('qtype_ddingroups_options', $options);
-    } else {
-        unset($options->id);
-        $DB->insert_record('qtype_ddingroups_options', $options);
-    }
-
-    return true;
-}
 
     
     
@@ -191,24 +194,27 @@ class qtype_ddingroups extends question_type {
     public function get_question_options($question): bool {
         global $DB, $OUTPUT;
     
-        // Load the options.
+        // Загружаем опции вопроса.
         if (!$question->options = $DB->get_record('qtype_ddingroups_options', ['questionid' => $question->id])) {
             echo $OUTPUT->notification('Error: Missing question options!');
             return false;
         }
     
-        // Load the answers.
-        if (!$question->options->answers = $DB->get_records('question_answers', ['question' => $question->id], 'fraction, id')) {
-            echo $OUTPUT->notification('Error: Missing question answers for ddingroups question ' . $question->id . '!');
-            return false;
+        // Загружаем элементы для перетаскивания (drag items).
+        if (!$question->options->dragitems = $DB->get_records('qtype_ddingroups_items', ['questionid' => $question->id], 'sortorder')) {
+            $question->options->dragitems = []; // Если записи отсутствуют, создаём пустой массив.
         }
     
-        // Load drag items.
-        $question->options->dragitems = $DB->get_records('qtype_ddingroups_items', ['questionid' => $question->id]);
+        // Загружаем группы.
+        if (!$question->options->groups = $DB->get_records('qtype_ddingroups_groups', ['questionid' => $question->id], 'groupnumber')) {
+            $question->options->groups = []; // Если записи отсутствуют, создаём пустой массив.
+        }
     
         parent::get_question_options($question);
         return true;
     }
+    
+    
 
     public function delete_question($questionid, $contextid): void {
         global $DB;
@@ -385,7 +391,7 @@ class qtype_ddingroups extends question_type {
     
         // Экспорт ответов.
         foreach ($question->options->answers as $answer) {
-            $groupid = $answer->groupid ?? 0; // Привязка к группе (0 = Wrong Answer).
+            // $groupid = $answer->groupid ?? 0; // Привязка к группе (0 = Wrong Answer).
             $output .= $answer->content . '|' . $groupid . PHP_EOL;
         }
     

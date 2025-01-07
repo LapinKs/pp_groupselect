@@ -43,100 +43,81 @@ class formulation_and_controls extends renderable_base {
     }
 
     public function export_for_template(\renderer_base $output): array {
-        global $PAGE;
-
         $data = [];
         $question = $this->qa->get_question();
-
+    
+        // Получаем текущий ответ пользователя.
         $response = $this->qa->get_last_qt_data();
+        
         $question->update_current_response($response);
-
-        $currentresponse = $question->currentresponse;
-        $correctresponse = $question->correctresponse;
-
-        // If we are running behat, force the question into a consistently known state for the sake of avoiding DnD funkyness.
-        if (defined('BEHAT_SITE_RUNNING')) {
-            $currentresponse = array_reverse($correctresponse);
-        }
-
-        // Generate fieldnames and ids.
-        $responsefieldname = $question->get_response_fieldname();
-        $responsename = $this->qa->get_qt_field_name($responsefieldname);
+    
+        $currentresponse = $question->currentresponse ?? [];
+        $correctresponse = $question->correctresponse ?? [];
+    
+        // Текст вопроса.
         $data['questiontext'] = $question->format_questiontext($this->qa);
-        $data['ablockid'] = 'id_ablock_' . $question->id;
-        $data['sortableid'] = 'id_sortable_' . $question->id;
-        $data['responsename'] = $responsename;
-        $data['responseid'] = 'id_' . preg_replace('/[^a-zA-Z0-9]+/', '_', $responsename);
-
-        // Set CSS classes for sortable list.
-        if ($class = $question->get_ddingroups_layoutclass()) {
-            $data['layoutclass'] = $class;
-        }
-        if ($numberingstyle = $question->numberingstyle) {
-            $data['numberingstyle'] = $numberingstyle;
-        }
-
+    
+        // Макет (горизонтальный или вертикальный).
         $data['horizontallayout'] = $question->layouttype == \qtype_ddingroups_question::LAYOUT_HORIZONTAL;
-
-        // In the multi-tries, the highlight response base on the hint highlight option.
-        if (
-            (isset($this->options->highlightresponse) && $this->options->highlightresponse) ||
-            !$this->qa->get_state()->is_active()
-        ) {
-            $data['active'] = false;
-        } else if ($this->qa->get_state()->is_active()) {
-            $data['active'] = true;
+    
+        // Группы.
+        $data['groups'] = [];
+        foreach ($question->groups as $groupid => $group) {
+            $groupdata = [
+                'groupname' => $group->content, // Название группы.
+                'groupid' => "group-box-{$groupid}", // Уникальный ID бокса группы.
+                'items' => [], // Элементы, привязанные к группе.
+            ];
+    
+            // Добавляем элементы, принадлежащие этой группе.
+            foreach ($currentresponse as $itemid => $selectedgroupid) {
+                if ($selectedgroupid == $groupid && isset($question->answers[$itemid])) {
+                    $answer = $question->answers[$itemid];
+                    $groupdata['items'][] = [
+                        'answertext' => $question->format_text(
+                            $answer->content,
+                            $answer->contentformat,
+                            $this->qa,
+                            'question',
+                            'answer',
+                            $itemid
+                        ),
+                        'id' => "item-{$itemid}",
+                    ];
+                }
+            }
+    
+            $data['groups'][] = $groupdata;
         }
-
-        $data['readonly'] = $this->options->readonly;
-
-        if (count($currentresponse)) {
-
-            // Initialize the cache for the  answers' md5keys
-            // this represents the initial position of the items.
-            $md5keys = [];
-
-            // Generate ddingroups items.
-            foreach ($currentresponse as $position => $answerid) {
-
-                if (!array_key_exists($answerid, $question->answers) || !array_key_exists($position, $correctresponse)) {
-                    // @codeCoverageIgnoreStart
-                    continue; // This shouldn't happen.
-                    // @codeCoverageIgnoreEnd
-                }
-
-                // Format the answer text.
-                $answer = $question->answers[$answerid];
-                $answertext = $question->format_text($answer->answer, $answer->answerformat,
-                    $this->qa, 'question', 'answer', $answerid);
-
-                // The original "id" revealed the correct order of the answers
-                // because $answer->fraction holds the correct order number.
-                // Therefore, we use the $answer's md5key for the "id".
-                $answerdata = [
-                    'answertext' => $answertext,
-                    'id' => $answer->md5key,
+    
+        // Непривязанные элементы (общий бокс).
+        $data['unassigned'] = [];
+        foreach ($question->answers as $itemid => $answer) {
+            if (!isset($currentresponse[$itemid]) || $currentresponse[$itemid] === 0) {
+                $data['unassigned'][] = [
+                    'answertext' => $question->format_text(
+                        $answer->content,
+                        $answer->contentformat,
+                        $this->qa,
+                        'question',
+                        'answer',
+                        $itemid
+                    ),
+                    'id' => "item-{$itemid}",
                 ];
-
-                if ($this->options->correctness === question_display_options::VISIBLE ||
-                        !empty($this->options->highlightresponse)) {
-                    $score = $question->get_ddingroups_item_score($question, $position, $answerid);
-                    if (isset($score['maxscore'])) {
-                        $renderer = $PAGE->get_renderer('qtype_ddingroups');
-                        $answerdata['feedbackimage'] = $renderer->feedback_image($score['fraction']);
-                    }
-                    $answerdata['scoreclass'] = $score['class'];
-                }
-
-                $data['answers'][] = $answerdata;
-
-                // Cache this answer key.
-                $md5keys[] = $answer->md5key;
             }
         }
-
-        $data['value'] = implode(',', $md5keys);
+    
+        // Количество групп.
+        $data['groupcount'] = count($question->groups);
+    
+        // Поля read-only и активность.
+        $data['readonly'] = $this->options->readonly;
+        $data['active'] = $this->qa->get_state()->is_active();
+        error_log('Exported data: ' . json_encode($data));
 
         return $data;
     }
+    
+    
 }
