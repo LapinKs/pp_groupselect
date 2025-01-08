@@ -65,15 +65,23 @@ class qtype_ddingroups_question extends question_graded_automatically {
     }
     
     public function apply_attempt_state(question_attempt_step $step) {
-        $this->correctresponse = json_decode($step->get_qt_var('_correctresponse'), true) ?? [];
         $this->currentresponse = json_decode($step->get_qt_var('_currentresponse'), true) ?? [];
+        $this->correctresponse = json_decode($step->get_qt_var('_correctresponse'), true) ?? [];
+        
+        // Привязываем группы к ответам, если они есть в БД.
+        foreach ($this->answers as $answerid => $answer) {
+            if (!empty($answer->groupid)) {
+                $this->currentresponse[$answerid] = $answer->groupid;
+            }
+        }
     }
     
+    
 
-    public function apply_attempt_state(question_attempt_step $step) {
-        $this->currentresponse = array_filter(explode(',', $step->get_qt_var('_currentresponse')));
-        $this->correctresponse = array_filter(explode(',', $step->get_qt_var('_correctresponse')));
-    }
+    // public function apply_attempt_state(question_attempt_step $step) {
+    //     $this->currentresponse = array_filter(explode(',', $step->get_qt_var('_currentresponse')));
+    //     $this->correctresponse = array_filter(explode(',', $step->get_qt_var('_correctresponse')));
+    // }
 
     public function validate_can_regrade_with_other_version(question_definition $otherversion): ?string {
         $basemessage = parent::validate_can_regrade_with_other_version($otherversion);
@@ -138,78 +146,80 @@ class qtype_ddingroups_question extends question_graded_automatically {
         $response = [];
         foreach ($this->correctresponse as $answerid => $groupid) {
             $response[] = [
-                'item' => $this->answers[$answerid]->md5key,
-                'group' => $groupid,
+                'item' => $this->answers[$answerid]->md5key, // Уникальный идентификатор элемента.
+                'group' => $groupid, // Группа, к которой он принадлежит.
             ];
         }
         $name = $this->get_response_fieldname();
         return [$name => json_encode($response)];
     }
     
+    
 
     public function summarise_response(array $response) {
-        $name = $this->get_response_fieldname();
-        $items = [];
-        if (array_key_exists($name, $response)) {
-            $items = explode(',', $response[$name]);
+        $this->update_current_response($response);
+    
+        $summary = [];
+        foreach ($this->currentresponse as $answerid => $groupid) {
+            $answer = $this->answers[$answerid];
+            $summary[$groupid][] = $this->html_to_text($answer->answer, $answer->answerformat);
         }
-        $answerids = [];
-        foreach ($this->answers as $answer) {
-            $answerids[$answer->md5key] = $answer->id;
+    
+        $result = [];
+        foreach ($summary as $groupid => $items) {
+            $groupname = $this->groups[$groupid]->name ?? 'Unassigned'; // Название группы.
+            $result[] = $groupname . ': ' . implode(', ', $items);
         }
-        foreach ($items as $i => $item) {
-            if (array_key_exists($item, $answerids)) {
-                $item = $this->answers[$answerids[$item]];
-                $item = $this->html_to_text($item->answer, $item->answerformat);
-                $item = shorten_text($item, 10, true); 
-                $items[$i] = $item;
-            } else {
-                $items[$i] = ''; 
-            }
-        }
-        return implode('; ', array_filter($items));
+    
+        return implode('; ', $result);
     }
+    
 
     public function classify_response(array $response) {
         $this->update_current_response($response);
-        $fraction = 1 / count($this->correctresponse);
-
+    
         $classifiedresponse = [];
-        foreach ($this->correctresponse as $position => $answerid) {
-            if (in_array($answerid, $this->currentresponse)) {
-                $currentposition = array_search($answerid, $this->currentresponse);
-            }
-
+        $fraction_per_item = 1 / count($this->correctresponse);
+    
+        foreach ($this->correctresponse as $answerid => $correctgroupid) {
+            $currentgroupid = $this->currentresponse[$answerid] ?? null;
+            $fraction = ($currentgroupid === $correctgroupid) ? $fraction_per_item : 0;
+    
             $answer = $this->answers[$answerid];
             $subqid = question_utils::to_plain_text($answer->answer, $answer->answerformat);
-
-
-            $maxbytes = 100;
-            if (strlen($subqid) > $maxbytes) {
- 
-                $subqid = substr($subqid, 0, $maxbytes);
-                if (preg_match('/^(.|\n)*/u', '', $subqid, $match)) {
-                    $subqid = $match[0];
-                }
-            }
-
+    
             $classifiedresponse[$subqid] = new question_classified_response(
-                $currentposition + 1,
-                get_string('positionx', 'qtype_ddingroups', $currentposition + 1),
-                ($currentposition == $position) * $fraction
+                $currentgroupid,
+                $this->groups[$currentgroupid]->name ?? 'Unassigned',
+                $fraction
             );
         }
-
+    
         return $classifiedresponse;
     }
+    
 
     public function is_complete_response(array $response) {
+        $this->update_current_response($response);
+        foreach ($this->answers as $answerid => $answer) {
+            if (!isset($this->currentresponse[$answerid])) {
+                return false; // Если хотя бы один элемент не помещён в группу.
+            }
+        }
         return true;
     }
+    
 
     public function is_gradable_response(array $response) {
-        return true;
+        $this->update_current_response($response);
+        foreach ($this->currentresponse as $groupid) {
+            if ($groupid !== null) {
+                return true; // Если хотя бы один элемент помещён в группу.
+            }
+        }
+        return false;
     }
+    
 
     public function get_validation_error(array $response) {
         return '';
@@ -222,50 +232,37 @@ class qtype_ddingroups_question extends question_graded_automatically {
 
     public function grade_response(array $response) {
         $this->update_current_response($response);
-
+    
+        $correctresponse = $this->correctresponse;
+        $currentresponse = $this->currentresponse;
+    
         $countcorrect = 0;
-        $countanswers = 0;
-        $gradingtype = $this->gradingtype;
-        switch ($gradingtype) {
-
+        $totalitems = count($correctresponse);
+    
+        switch ($this->gradingtype) {
             case self::GRADING_ABSOLUTE_POSITION:
-                $correctresponse = $this->correctresponse;
-                $currentresponse = $this->currentresponse;
-                foreach ($correctresponse as $position => $answerid) {
-                    if (array_key_exists($position, $currentresponse)) {
-                        if ($currentresponse[$position] == $answerid) {
-                            $countcorrect++;
-                        }
+                foreach ($correctresponse as $answerid => $correctgroupid) {
+                    $currentgroupid = $currentresponse[$answerid] ?? null;
+                    if ($currentgroupid !== $correctgroupid) {
+                        return [0, question_state::graded_state_for_fraction(0)];
                     }
-                    $countanswers++;
                 }
-
+                return [1, question_state::graded_state_for_fraction(1)];
+    
             case self::GRADING_RELATIVE_TO_CORRECT:
-                $correctresponse = $this->correctresponse;
-                $currentresponse = $this->currentresponse;
-                $count = (count($correctresponse) - 1);
-                foreach ($correctresponse as $position => $answerid) {
-                    if (in_array($answerid, $currentresponse)) {
-                        $currentposition = array_search($answerid, $currentresponse);
-                        $currentscore = ($count - abs($position - $currentposition));
-                        if ($currentscore > 0) {
-                            $countcorrect += $currentscore;
-                        }
+                foreach ($correctresponse as $answerid => $correctgroupid) {
+                    $currentgroupid = $currentresponse[$answerid] ?? null;
+                    if ($currentgroupid === $correctgroupid) {
+                        $countcorrect++;
                     }
-                    $countanswers += $count;
                 }
-                break;
+                $fraction = $countcorrect / $totalitems;
+                return [$fraction, question_state::graded_state_for_fraction($fraction)];
         }
-        if ($countanswers == 0) {
-            $fraction = 0;
-        } else {
-            $fraction = ($countcorrect / $countanswers);
-        }
-        return [
-            $fraction,
-            question_state::graded_state_for_fraction($fraction),
-        ];
+    
+        return [0, question_state::graded_state_for_fraction(0)];
     }
+    
 
     public function check_file_access($qa, $options, $component, $filearea, $args, $forcedownload) {
         if ($component == 'question') {
@@ -306,95 +303,21 @@ class qtype_ddingroups_question extends question_graded_automatically {
     public function update_current_response(array $response) {
         $name = $this->get_response_fieldname();
         $this->currentresponse = []; // Сбрасываем текущий ответ.
-    
-        if (array_key_exists($name, $response)) {
-            // Разбиваем сохраненные данные по группам.
-            $groupData = explode('|', $response[$name]); // Предположим, группы разделены символом `|`
-            foreach ($groupData as $groupid => $groupItems) {
-                $itemIds = explode(',', $groupItems); // Элементы в группе разделены запятой.
-                foreach ($itemIds as $itemKey) {
-                    // Сопоставляем MD5-ключи с ID ответов.
-                    foreach ($this->answers as $answer) {
-                        if ($itemKey == $answer->md5key) {
-                            $this->currentresponse[$answer->id] = $groupid; // Привязываем элемент к группе.
-                            break;
-                        }
-                    }
+        
+        if (isset($response[$name]) && !empty($response[$name])) {
+            // Разбиваем данные ответа на группы.
+            $groupData = json_decode($response[$name], true); // Предполагается, что данные хранятся в JSON.
+            foreach ($groupData as $itemid => $groupid) {
+                // Проверяем, существует ли элемент среди ответов, и привязываем его к группе.
+                if (isset($this->answers[$itemid])) {
+                    $this->currentresponse[$itemid] = $groupid; // Привязка элемента к группе.
                 }
             }
         }
     }
     
+    
 
-    public function get_next_answerids(array $answerids, bool $lastitem = false): array {
-        $nextanswerids = [];
-        $imax = count($answerids);
-        $imax--;
-        if ($lastitem) {
-            $nextanswerid = 0;
-        } else {
-            $nextanswerid = $answerids[$imax];
-            $imax--;
-        }
-        for ($i = $imax; $i >= 0; $i--) {
-            $thisanswerid = $answerids[$i];
-            $nextanswerids[$thisanswerid] = $nextanswerid;
-            $nextanswerid = $thisanswerid;
-        }
-        return $nextanswerids;
-    }
-
-
-    public function get_previous_and_next_answerids(array $answerids, bool $all = false): array {
-        $prevnextanswerids = [];
-        $next = $answerids;
-        $prev = [];
-        while ($answerid = array_shift($next)) {
-            if ($all) {
-                $prevnextanswerids[$answerid] = (object) [
-                    'prev' => $prev,
-                    'next' => $next,
-                ];
-            } else {
-                $prevnextanswerids[$answerid] = (object) [
-                    'prev' => [empty($prev) ? 0 : $prev[0]],
-                    'next' => [empty($next) ? 0 : $next[0]],
-                ];
-            }
-            array_unshift($prev, $answerid);
-        }
-        return $prevnextanswerids;
-    }
-
-
-    public function get_ordered_subset(bool $contiguous): array {
-
-        $positions = $this->get_ordered_positions($this->correctresponse, $this->currentresponse);
-        $subsets = $this->get_ordered_subsets($positions, $contiguous);
-
-
-        $bestsubset = [];
-
-        $bestcount = 1;
-
-        foreach ($subsets as $subset) {
-            $count = count($subset);
-            if ($count > $bestcount) {
-                $bestcount = $count;
-                $bestsubset = $subset;
-            }
-        }
-        return $bestsubset;
-    }
-
-
-    public function get_ordered_positions(array $correctresponse, array $currentresponse): array {
-        $positions = [];
-        foreach ($currentresponse as $answerid) {
-            $positions[] = array_search($answerid, $correctresponse);
-        }
-        return $positions;
-    }
 
     public static function get_grading_types(?int $type = null): array|string {
         $plugin = 'qtype_ddingroups';
@@ -405,56 +328,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
         return self::get_types($types, $type);
     }
 
-    public function get_ordered_subsets(array $positions, bool $contiguous): array {
-
- 
-        $subsets = [];
-
- 
-        foreach ($positions as $p => $value) {
-
-            $isnew = true;
-
-            $new = [];
-
-            foreach ($subsets as $s => $subset) {
-
- 
-                $end = $positions[end($subset)];
-
-                switch (true) {
-
-                    case ($value == ($end + 1)):
-                  
-                        $isnew = false;
-                        $subsets[$s][] = $p;
-                        break;
-
-                    case $contiguous:
-               
-                        break;
-
-                    case ($value > $end):
-                   
-                        $isnew = false;
-                        $new[] = $subset;
-                        $subsets[$s][] = $p;
-                        break;
-                }
-            }
-
-   
-            if ($isnew) {
-                $new[] = [$p];
-            }
-
-            if (count($new)) {
-                $subsets = array_merge($subsets, $new);
-            }
-        }
-
-        return $subsets;
-    }
+    
 
  
     public static function get_types(array $types, $type): array|string {
@@ -471,127 +345,28 @@ class qtype_ddingroups_question extends question_graded_automatically {
 
     public function get_num_parts_right(array $response): array {
         $this->update_current_response($response);
-        $gradingtype = $this->gradingtype;
-
-        $numright = 0;
-        $numpartial = 0;
-        $numincorrect = 0;
-        list($correctresponse, $currentresponse) = $this->get_response_depend_on_grading_type($gradingtype);
-
-        foreach ($this->currentresponse as $position => $answerid) {
-            [$fraction, $score, $maxscore] =
-                $this->get_fraction_maxscore_score_of_item($position, $answerid, $correctresponse, $currentresponse);
-            if (is_null($fraction)) {
-                continue;
-            }
-
-            if ($fraction > 0.999999) {
-                $numright++;
-            } else if ($fraction < 0.000001) {
-                $numincorrect++;
+    
+        $numright = 0;        // Количество элементов в правильных группах.
+        $numpartial = 0;      // Количество элементов в неправильных группах.
+        $numincorrect = 0;    // Количество элементов, которых нет в ответе.
+    
+        foreach ($this->answers as $answerid => $answer) {
+            $correctgroup = $this->correctresponse[$answerid] ?? null; // Группа, в которую должен попасть элемент.
+            $currentgroup = $this->currentresponse[$answerid] ?? null; // Группа, в которую пользователь поместил элемент.
+    
+            if ($currentgroup === null) {
+                $numincorrect++; // Элемент отсутствует в ответе.
+            } elseif ($currentgroup === $correctgroup) {
+                $numright++; // Элемент находится в правильной группе.
             } else {
-                $numpartial++;
+                $numpartial++; // Элемент находится в неправильной группе.
             }
         }
-
+    
         return [$numright, $numpartial, $numincorrect];
     }
-
-
-
-    protected function get_fraction_maxscore_score_of_item(
-        int $position,
-        int $answerid,
-        array $correctresponse,
-        array $currentresponse
-    ): array {
-        $gradingtype = $this->gradingtype;
-
-        $score    = 0;
-        $maxscore = null;
-
-        switch ($gradingtype) {
-            case self::GRADING_ABSOLUTE_POSITION:
-                if (isset($correctresponse[$position])) {
-                    if ($correctresponse[$position] == $answerid) {
-                        $score = 1;
-                    }
-                    $maxscore = 1;
-                }
-                break;
-            case self::GRADING_RELATIVE_TO_CORRECT:
-                if (isset($correctresponse[$position])) {
-                    $maxscore = (count($correctresponse) - 1);
-                    $answerid = $currentresponse[$position];
-                    $correctposition = array_search($answerid, $correctresponse);
-                    $score = ($maxscore - abs($correctposition - $position));
-                    if ($score < 0) {
-                        $score = 0;
-                    }
-                }
-                break;
-        }
-        
-        $fraction = $maxscore ? $score / $maxscore : $maxscore;
-
-        return [$fraction, $score, $maxscore];
-    }
     
 
-    
-    protected function get_response_depend_on_grading_type(string $gradingtype): array {
 
-        $correctresponse = [];
-        $currentresponse = [];
-        switch ($gradingtype) {
-            case self::GRADING_ABSOLUTE_POSITION:
-            case self::GRADING_RELATIVE_TO_CORRECT:
-                $correctresponse = $this->correctresponse;
-                $currentresponse = $this->currentresponse;
-                break;
-        }
-        return [$correctresponse, $currentresponse];
-    }
-
-
-  
-    public function get_ddingroups_item_score(question_definition $question, int $position, int $answerid): array {
-
-        if (!isset($this->itemscores[$position])) {
-
-            [$correctresponse, $currentresponse] = $this->get_response_depend_on_grading_type($this->gradingtype);
-
-            $percent  = 0;    // 100 * $fraction.
-            [$fraction, $score, $maxscore] =
-                $this->get_fraction_maxscore_score_of_item($position, $answerid, $correctresponse, $currentresponse);
-
-            if ($maxscore === null) {
-
-                $class = 'unscored';
-            } else {
-                if ($maxscore > 0) {
-                    $percent = round(100 * $fraction, 0);
-                }
-                $class = match (true) {
-                    $fraction > 0.999999 => 'correct',
-                    $fraction < 0.000001 => 'incorrect',
-                    $fraction >= 0.66 => 'partial66',
-                    $fraction >= 0.33 => 'partial33',
-                    default => 'partial00',
-                };
-            }
-
-            $itemscores = [
-                'score' => $score,
-                'maxscore' => $maxscore,
-                'fraction' => $fraction,
-                'percent' => $percent,
-                'class' => $class,
-            ];
-            $this->itemscores[$position] = $itemscores;
-        }
-
-        return $this->itemscores[$position];
-    }
 
 }

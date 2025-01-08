@@ -1,31 +1,9 @@
 <?php
-// This file is part of Moodle - http://moodle.org/
-//
-// Moodle is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Moodle is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
-
 namespace qtype_ddingroups\output;
 
 use question_attempt;
 use question_display_options;
 
-/**
- * Create the question formulation, controls ready for output.
- *
- * @package    qtype_ddingroups
- * @copyright  2023 Ilya Tregubov <ilya.a.tregubov@gmail.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
 class formulation_and_controls extends renderable_base {
 
     /**
@@ -43,57 +21,76 @@ class formulation_and_controls extends renderable_base {
     }
 
     public function export_for_template(\renderer_base $output): array {
+        global $DB;
         $data = [];
         $question = $this->qa->get_question();
     
-        // Получаем текущий ответ пользователя.
         $response = $this->qa->get_last_qt_data();
-        
         $question->update_current_response($response);
     
         $currentresponse = $question->currentresponse ?? [];
         $correctresponse = $question->correctresponse ?? [];
     
-        // Текст вопроса.
         $data['questiontext'] = $question->format_questiontext($this->qa);
+        $answers = $DB->get_records('qtype_ddingroups_items', ['questionid' => $question->id]);
     
-        // Макет (горизонтальный или вертикальный).
-        $data['horizontallayout'] = $question->layouttype == \qtype_ddingroups_question::LAYOUT_HORIZONTAL;
+        $data['layout'] = $question->layouttype == \qtype_ddingroups_question::LAYOUT_HORIZONTAL ? 'horizontal' : 'vertical';
+        $groups = $DB->get_records('qtype_ddingroups_groups', ['questionid' => $question->id], 'groupnumber');
     
-        // Группы.
+        $groupedItems = [];
+        foreach ($answers as $answer) {
+            $groupid = $answer->groupid;
+            $answerid = $answer->id;
+    
+            if (isset($groups[$groupid])) {
+                if (!isset($groupedItems[$groupid])) {
+                    $groupedItems[$groupid] = [];
+                }
+                $groupedItems[$groupid][] = $answerid;
+            } else {
+                error_log("Warning: Answer with ID {$answerid} has invalid group ID {$groupid}.");
+            }
+        }
+    
+        error_log('data answers: ' . json_encode($answers));
+        error_log('data groups: ' . json_encode($groups));
+        error_log('Grouped items: ' . json_encode($groupedItems));
+    
+        // Формируем группы с их элементами.
         $data['groups'] = [];
-        foreach ($question->groups as $groupid => $group) {
+        foreach ($groups as $groupid => $group) {
             $groupdata = [
-                'groupname' => $group->content, // Название группы.
-                'groupid' => "group-box-{$groupid}", // Уникальный ID бокса группы.
-                'items' => [], // Элементы, привязанные к группе.
+                'groupname' => $group->content,
+                'groupid' => "group-box-{$groupid}",
+                'items' => [],
             ];
     
-            // Добавляем элементы, принадлежащие этой группе.
-            foreach ($currentresponse as $itemid => $selectedgroupid) {
-                if ($selectedgroupid == $groupid && isset($question->answers[$itemid])) {
-                    $answer = $question->answers[$itemid];
-                    $groupdata['items'][] = [
-                        'answertext' => $question->format_text(
-                            $answer->content,
-                            $answer->contentformat,
-                            $this->qa,
-                            'question',
-                            'answer',
-                            $itemid
-                        ),
-                        'id' => "item-{$itemid}",
-                    ];
+            if (isset($groupedItems[$groupid])) {
+                foreach ($groupedItems[$groupid] as $itemid) {
+                    if (isset($answers[$itemid])) {
+                        $answer = $answers[$itemid];
+                        $groupdata['items'][] = [
+                            'answertext' => $question->format_text(
+                                $answer->content,
+                                $answer->contentformat,
+                                $this->qa,
+                                'question',
+                                'answer',
+                                $itemid
+                            ),
+                            'id' => "item-{$itemid}",
+                        ];
+                    }
                 }
             }
     
             $data['groups'][] = $groupdata;
         }
     
-        // Непривязанные элементы (общий бокс).
+        // Непривязанные элементы.
         $data['unassigned'] = [];
-        foreach ($question->answers as $itemid => $answer) {
-            if (!isset($currentresponse[$itemid]) || $currentresponse[$itemid] === 0) {
+        foreach ($answers as $itemid => $answer) {
+            if (!isset($groupedItems[$answer->groupid])) {
                 $data['unassigned'][] = [
                     'answertext' => $question->format_text(
                         $answer->content,
@@ -108,16 +105,16 @@ class formulation_and_controls extends renderable_base {
             }
         }
     
-        // Количество групп.
-        $data['groupcount'] = count($question->groups);
-    
-        // Поля read-only и активность.
+        $data['groupcount'] = count($groups);
         $data['readonly'] = $this->options->readonly;
         $data['active'] = $this->qa->get_state()->is_active();
-        error_log('Exported data: ' . json_encode($data));
-
+        error_log('data: ' . json_encode($data));
+    
         return $data;
     }
+    
+    
+    
     
     
 }

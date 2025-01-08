@@ -11,6 +11,8 @@ class qtype_ddingroups_renderer extends qtype_with_combined_feedback_renderer {
 
     public function formulation_and_controls(question_attempt $qa, question_display_options $options): string {
         $formulationandcontrols = new formulation_and_controls($qa, $options);
+        error_log('renderer'.json_encode($formulationandcontrols->export_for_template($this->output)));
+
         return $this->output->render_from_template('qtype_ddingroups/formulation_and_controls',
             $formulationandcontrols->export_for_template($this->output));
     }

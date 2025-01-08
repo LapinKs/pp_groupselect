@@ -1,13 +1,10 @@
-
 'use strict';
-
 import $ from 'jquery';
 import drag from 'core/dragdrop';
 import Templates from 'core/templates';
 import Notification from 'core/notification';
 import {getString} from 'core/str';
 import {prefetchString} from 'core/prefetch';
-
 export default class DragReorder {
 
     // Class variables handling state.
@@ -20,7 +17,7 @@ export default class DragReorder {
     itemDragging = null; // Item being moved by dragging (jQuery object).
     proxy = null; // Drag proxy (jQuery object).
 
-   
+
     constructor(config) {
         // Bring in the config to our state.
         this.config = config;
@@ -100,6 +97,9 @@ export default class DragReorder {
     dragMove() {
         let closestItem = null;
         let closestDistance = null;
+        let currentGroup = null;
+
+        // Определяем ближайший элемент в списке.
         this.orderList.querySelectorAll(this.config.item).forEach(element => {
             const distance = this.distanceBetweenElements(element);
             if (closestItem === null || distance < closestDistance) {
@@ -108,20 +108,36 @@ export default class DragReorder {
             }
         });
 
-        if (closestItem[0] === this.itemDragging[0]) {
-            return;
+        // Определяем группу, над которой находится элемент.
+        document.querySelectorAll('.group-box').forEach(container => {
+            const rect = container.getBoundingClientRect();
+            if (
+                this.proxy.offset().left > rect.left &&
+                this.proxy.offset().right < rect.right &&
+                this.proxy.offset().top > rect.top &&
+                this.proxy.offset().bottom < rect.bottom
+            ) {
+                currentGroup = container;
+            }
+        });
+
+        if (currentGroup) {
+            const groupList = currentGroup.querySelector('.sortablelist');
+            if (!groupList.contains(this.itemDragging[0])) {
+                groupList.appendChild(this.itemDragging[0]);
+            }
+        } else if (closestItem && closestItem[0] !== this.itemDragging[0]) {
+            // Если элемент не над группой, перемещаем его относительно ближайшего элемента.
+            const offsetValue = this.midY(this.proxy) < this.midY(closestItem) ? 20 : -20;
+            if (this.midY(this.proxy) + offsetValue < this.midY(closestItem)) {
+                this.itemDragging.insertBefore(closestItem);
+            } else {
+                this.itemDragging.insertAfter(closestItem);
+            }
         }
 
-        // Set offset depending on if item is being dragged downwards/upwards.
-        const offsetValue = this.midY(this.proxy) < this.midY(closestItem) ? 20 : -20;
-        if (this.midY(this.proxy) + offsetValue < this.midY(closestItem)) {
-            this.itemDragging.insertBefore(closestItem);
-        } else {
-            this.itemDragging.insertAfter(closestItem);
-        }
         this.updateProxy();
     }
-
     /**
      * Update proxy's position.
      */
@@ -134,19 +150,17 @@ export default class DragReorder {
             }
         }
     }
-
-    /**
-     * End dragging.
-     */
     dragEnd() {
-        if (typeof this.config.reorderEnd !== 'undefined') {
+        if (typeof this.config.reorderEnd !== 'undefined'){
             this.config.reorderEnd(this.itemDragging.closest(this.config.list), this.itemDragging);
         }
-
         if (!this.arrayEquals(this.originalOrder, this.getCurrentOrder())) {
-            // Order has changed, call the callback.
-            this.config.reorderDone(this.itemDragging.closest(this.config.list), this.itemDragging, this.getCurrentOrder());
-
+            const currentGroup = this.itemDragging.closest('.group-box')?.id || 'general-box';
+            const newOrder = this.getCurrentOrder().map(itemId => ({
+                id: itemId,
+                group: currentGroup,
+            }));
+            this.config.reorderDone(this.itemDragging.closest(this.config.list), this.itemDragging, newOrder);
             getString('moved', 'qtype_ddingroups', {
                 item: this.itemDragging.find('[data-itemcontent]').text().trim(),
                 position: this.itemDragging.index() + 1,
@@ -155,28 +169,17 @@ export default class DragReorder {
                 this.config.announcementRegion.innerHTML = str;
             });
         }
-
-        // Clean up after the drag is finished.
         this.proxy.remove();
         this.proxy = null;
         this.itemDragging.removeClass(this.config.itemMovingClass);
         this.itemDragging = null;
         this.dragStart = null;
     }
-
-    /**
-     * Handles the movement of an item by click.
-     *
-     * @param {MouseEvent} e The pointer event.
-     */
     itemMovedByClick(e) {
         const actionButton = e.target.closest(this.config.actionButton);
         if (actionButton) {
             this.itemDragging = $(e.target.closest(this.config.item));
-
-            // Store the current state of the list.
             this.originalOrder = this.getCurrentOrder();
-
             switch (actionButton.dataset.action) {
                 case 'move-backward':
                     e.preventDefault();
@@ -193,19 +196,11 @@ export default class DragReorder {
                     }
                     break;
             }
-
-            // After we have potentially moved the item, we need to check if the order has changed.
             if (!this.arrayEquals(this.originalOrder, this.getCurrentOrder())) {
-                // Order has changed, call the callback.
                 this.config.reorderDone(this.itemDragging.closest(this.config.list), this.itemDragging, this.getCurrentOrder());
-
-                // When moving an item to the first or last position, the button that was clicked will be hidden.
-                // In this case, we need to focus the other button.
                 if (!this.itemDragging.prev().length) {
-                    // Focus the 'next' action button.
                     this.itemDragging.find('[data-action="move-forward"]').focus();
                 } else if (!this.itemDragging.next().length) {
-                    // Focus the 'previous' action button.
                     this.itemDragging.find('[data-action="move-backward"]').focus();
                 }
 
@@ -219,74 +214,32 @@ export default class DragReorder {
             }
         }
     }
-
-    /**
-     * Get the x-position of the middle of the DOM node represented by the given jQuery object.
-     *
-     * @param {jQuery} node jQuery wrapping a DOM node.
-     * @returns {number} Number the x-coordinate of the middle (left plus half outerWidth).
-     */
     midX(node) {
         return node.offset().left + node.outerWidth() / 2;
     }
-
-    /**
-     * Get the y-position of the middle of the DOM node represented by the given jQuery object.
-     *
-     * @param {jQuery} node jQuery wrapped DOM node.
-     * @returns {number} Number the y-coordinate of the middle (top plus half outerHeight).
-     */
     midY(node) {
         return node.offset().top + node.outerHeight() / 2;
     }
-
-    /**
-     * Calculate the distance between the centres of two elements.
-     *
-     * @param {HTMLLIElement} element DOM node of a list item.
-     * @return {number} number the distance in pixels.
-     */
     distanceBetweenElements(element) {
         const [e1, e2] = [$(element), $(this.proxy)];
         const [dx, dy] = [this.midX(e1) - this.midX(e2), this.midY(e1) - this.midY(e2)];
         return Math.sqrt(dx * dx + dy * dy);
     }
-
-    /**
-     * Get the current order of the list containing itemDragging.
-     *
-     * @returns {Array} Array of strings, the id of each element in order.
-     */
     getCurrentOrder() {
         return this.itemDragging.closest(this.config.list).find(this.config.item).map(
             (index, item) => {
                 return this.config.idGetter(item);
             }).get();
     }
-
-    /**
-     * Compare two arrays which contain primitive types to see if they are equal.
-     * @param {Array} a1 first array.
-     * @param {Array} a2 second array.
-     * @return {Boolean} boolean true if they both contain the same elements in the same order, else false.
-     */
     arrayEquals(a1, a2) {
         return a1.length === a2.length &&
             a1.every((v, i) => {
                 return v === a2[i];
             });
     }
-
-    /**
-     * Initialise one ddingroups question.
-     *
-     * @param {String} sortableid id of ul for this question.
-     * @param {String} responseid id of hidden field for this question.
-     */
     static init(config) {
-        const lists = config.lists; // Массив списков (общий и групповые боксы).
+        const lists = config.lists;
         const responseid = config.responseid;
-    
         lists.forEach(list => {
             new DragReorder({
                 actionButton: '[data-action]',
@@ -298,12 +251,16 @@ export default class DragReorder {
                     return item.id;
                 },
                 reorderDone: (list, item, newOrder) => {
-                    $('input#' + responseid)[0].value = newOrder.join(',');
+                    const response = {};
+                    document.querySelectorAll('.group-box, #general-box').forEach(container => {
+                        const groupId = container.id;
+                        response[groupId] = Array.from(container.querySelectorAll('li.sortableitem')).map(item => item.id);
+                    });
+
+                    $('input#' + responseid)[0].value = JSON.stringify(response);
                 }
             });
         });
-    
         prefetchString('qtype_ddingroups', 'moved');
     }
-    
 }

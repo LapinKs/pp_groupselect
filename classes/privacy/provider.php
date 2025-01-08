@@ -6,13 +6,6 @@ namespace qtype_ddingroups\privacy;
 use core_privacy\local\metadata\collection;
 use core_privacy\local\request\writer;
 
-/**
- * Реализация подсистемы конфиденциальности для qtype_groupselect.
- *
- * @package    qtype_groupselect
- * @copyright  
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 или более поздняя
- */
 class provider implements 
     \core_privacy\local\metadata\provider, 
     \core_privacy\local\request\user_preference_provider {

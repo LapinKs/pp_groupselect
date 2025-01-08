@@ -1,5 +1,5 @@
 <?php
-
+namespace qtype_ddingroups\output;
 class correct_response extends renderable_base {
     public function export_for_template(\renderer_base $output): array {
 
