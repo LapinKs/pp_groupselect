@@ -297,3 +297,15 @@
     border: 1px solid #999;
     cursor: grabbing;
 }
+.sortablelist {
+    position: relative;
+}
+
+.sortableitem {
+    cursor: grab;
+    user-select: none;
+}
+
+.sortableitem.dragging {
+    opacity: 0.5;
+}
