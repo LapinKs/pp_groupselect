@@ -2,57 +2,55 @@
     {{{questiontext}}}
 </div>
 
-<!-- Общий бокс для всех элементов -->
-<div class="ablock" id="general-box">
-    <div class="answer ddingroups">
-        <ul class="sortablelist {{layout}}" id="general-box-list">
+<div class="layout-container">
+    <!-- Контейнер для групп -->
+    <div class="groups-container {{layout}}">
+        {{#groups}}
+        <div class="group-box" id="{{groupid}}">
+            <div class="group-header">
+                <h3 class="group-title">{{{groupname}}}</h3>
+            </div>
+            <div class="group-content">
+                <ul class="sortablelist" id="{{groupid}}-list">
+                    <!-- Пустые списки для перетаскивания элементов -->
+                </ul>
+            </div>
+        </div>
+        {{/groups}}
+    </div>
+
+    <!-- Общий бокс для всех элементов -->
+    <div class="general-box">
+        <h3>Ответы</h3>
+        <ul class="sortablelist" id="general-box-list">
+            <!-- Все элементы изначально находятся здесь -->
             {{#groups}}
-                {{#items}}
-                    <!-- Элементы отображаются в общем боксе -->
-                    <li class="p-2 {{^readonly}}sortableitem{{/readonly}}" id="{{id}}">
-                        <div class="d-flex">
-                            {{^readonly}}
-                                <div class="d-flex p-2 grip">
-                                    <i class="fas fa-grip-vertical" aria-hidden="true"></i>
-                                </div>
-                            {{/readonly}}
-                            <div class="d-flex align-items-center flex-grow-1 px-2" id="{{id}}-text" data-itemcontent>
-                                {{{answertext}}}
-                            </div>
-                        </div>
-                    </li>
-                {{/items}}
+            {{#items}}
+            <li class="sortableitem" id="{{id}}" draggable="true">
+                <span>{{{answertext}}}</span>
+            </li>
+            {{/items}}
             {{/groups}}
+            {{#unassigned}}
+            <li class="sortableitem" id="{{id}}" draggable="true">
+                <span>{{{answertext}}}</span>
+            </li>
+            {{/unassigned}}
         </ul>
     </div>
 </div>
 
-<!-- Пустые боксы для групп -->
-{{#groups}}
-<div class="group-box" id="{{groupid}}">
-    <h3>{{{groupname}}}</h3>
-    <ul class="sortablelist" id="{{groupid}}-list">
-        <!-- Сюда элементы будут перемещаться -->
-    </ul>
-</div>
-{{/groups}}
-
 <!-- Скрытое поле для хранения результата -->
-<input name="{{responsename}}" id="{{responseid}}" type="hidden" value="{{value}}"/>
+<input name="{{responsename}}" id="{{responseid}}" type="hidden" value="{{value}}" />
 
-<!-- Вывод данных для отладки -->
-<pre>{{{json .}}}</pre>
-
-<!-- Скрипт для инициализации drag and drop -->
+<!-- Скрипт для инициализации drag-and-drop -->
 {{^readonly}}
-    {{#js}}
-        require(['qtype_ddingroups/dragreorder'], function(dragreorder) {
-            dragreorder.init({
-                lists: ['general-box-list', {{#groups}}'{{groupid}}-list',{{/groups}}],
-                responseid: '{{responseid}}'
-            });
-        });
-    {{/js}}
+{{#js}}
+require(['qtype_ddingroups/dragreorder'], function(dragreorder) {
+    dragreorder.init({
+        lists: ['general-box-list', {{#groups}}'{{groupid}}-list',{{/groups}}],
+        responseid: '{{responseid}}'
+    });
+});
+{{/js}}
 {{/readonly}}
-
-

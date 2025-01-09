@@ -1,4 +1,4 @@
-.que.ordering div.answer.ordering {
+/* .que.ordering div.answer.ordering {
     overflow: auto;
 }
 
@@ -27,7 +27,7 @@
 .que.ordering .sortablelist li.sortableitem {
     position: relative;
     cursor: move;
-    margin-left: 26px; /* The margin is needed for the list-style-type in numberingxxx classes */
+    margin-left: 26px;
 }
 
 .que.ordering .sortablelist li.sortableitem:first-of-type [data-action="move-backward"],
@@ -46,7 +46,7 @@
 .que.ordering .sortablelist.numberingABCD li,
 .que.ordering .sortablelist.numberingiii li,
 .que.ordering .sortablelist.numberingIIII li {
-    margin-left: 26px; /* The margin is needed for the list-style-type in numberingxxx classes */
+    margin-left: 26px;
 }
 
 .que.ordering .sortablelist.numberingnone li {
@@ -74,7 +74,7 @@
     flex-wrap: wrap;
 }
 
-/* Better define 'row' of item for horizontal list. */
+
 .que.ordering .sortablelist.horizontal {
     display: flex;
     flex-wrap: wrap;
@@ -85,7 +85,7 @@
     min-height: 18px;
 }
 
-/* Styles for when things are being dragged. */
+
 .que.ordering.dragproxy {
     margin: 0;
     padding: 0;
@@ -103,7 +103,7 @@
 }
 .que.ordering.dragproxy .sortablelist li.horizontal {
     float: none;
-}
+} */
 .item-moving {
     box-shadow: 3px 3px 4px #000;
 }
@@ -112,32 +112,28 @@
 }
 
 
-/* Styles for feedback. */
+
 .que.ordering .sortablelist.notactive li.correct {
-    background-color: #dff4d8; /* light green */
-    border-color: #9f6; /* gentle green */
+    background-color: #dff4d8;
+    border-color: #9f6;
 }
 .que.ordering .sortablelist.notactive li.partial66 {
-    background-color: #dff4d8; /* light green */
-    border-color: #f90; /* dark  orange */
+    background-color: #dff4d8;
+    border-color: #f90;
 }
 .que.ordering .sortablelist.notactive li.partial33 {
-    background-color: #ffebcc; /* light orange */
-    border-color: #f90; /* dark orange */
+    background-color: #ffebcc;
+    border-color: #f90;
 }
 .que.ordering .sortablelist.notactive li.partial00 {
-    background-color: #fdd; /* light red */
-    border-color: #f90; /* dark orange */
+    background-color: #fdd;
+    border-color: #f90;
 }
 .que.ordering .sortablelist.notactive li.incorrect {
-    background-color: #fdd; /* light red */
-    border-color: #ff7373; /* gentle red */
+    background-color: #fdd;
+    border-color: #ff7373;
 }
-/*
-    Force containing DIV to cover the floating LI elements
-    Note: if you add "overflow:auto;  to "ol.correctorder"
-    then the numbers for the <LI> elements disappear !!
-*/
+
 .que.ordering div.rightanswer {
     overflow: auto;
 }
@@ -157,8 +153,147 @@
     margin-left: 24px;
 }
 
-/* the width restriction can be limited to editors for draggable items
-   by inserting "fieldset:nth-child(n+4)" before "div.feditor" */
+
 #page-question-type-ordering form.mform fieldset:nth-child(n+4) div.feditor {
     max-width: 480px;
+}
+.sortablelist {
+    border: 1px dashed #aaa;
+    min-height: 50px;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    transition: border-color 0.3s ease;
+}
+
+.sortablelist.drag-over {
+    border-color: #0073e6; /* Синий цвет при наведении. */
+}
+
+.sortableitem {
+    display: inline-block;
+    padding: 5px 10px;
+    margin: 5px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    cursor: grab;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.sortableitem.dragging {
+    opacity: 0.7;
+    background-color: #d1ecf1;
+    cursor: grabbing;
+}
+/* Общие стили для групп */
+.layout-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.groups {
+    display: flex;
+    gap: 16px;
+}
+
+.group-box {
+    border: 1px solid #ccc;
+    padding: 8px;
+    border-radius: 4px;
+    min-width: 150px;
+    flex-grow: 1;
+}
+
+.group-box .sortablelist {
+    list-style-type: none;
+    padding: 0;
+    margin: 8px 0;
+}
+
+.group-box .sortablelist li {
+    padding: 8px;
+    margin-bottom: 4px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: grab;
+}
+
+/* Горизонтальный layout */
+.layout-container.horizontal {
+    flex-direction: column;
+}
+
+.layout-container.horizontal .groups {
+    flex-direction: row;
+}
+
+/* Вертикальный layout */
+.layout-container.vertical {
+    flex-direction: row;
+}
+
+.layout-container.vertical .groups {
+    flex-direction: column;
+}
+.layout-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.groups-container.horizontal {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.groups-container.vertical {
+    display: flex;
+    flex-direction: column;
+}
+
+.group-box {
+    display: flex;
+    align-items: flex-start;
+    margin: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.group-header {
+    margin-right: 15px; /* Отступ текста группы */
+    flex-shrink: 0;
+}
+
+.group-content {
+    flex-grow: 1;
+}
+
+.general-box {
+    margin-top: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.sortablelist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+/* Подсветка области, куда можно бросить элемент */
+.sortablelist.drag-over {
+    border: 2px dashed #ccc;
+    background-color: #f9f9f9;
+}
+
+/* Элемент, который перетаскивается */
+.dragging {
+    opacity: 0.5;
+    border: 1px solid #999;
+    cursor: grabbing;
 }
