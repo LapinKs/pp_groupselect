@@ -5,8 +5,8 @@ import Templates from 'core/templates';
 import Notification from 'core/notification';
 import {getString} from 'core/str';
 import {prefetchString} from 'core/prefetch';
-export default class DragReorder {
 
+export default class DragReorder {
     // Class variables handling state.
     config = {reorderStart: undefined, reorderEnd: undefined}; // Config object with some basic definitions.
     dragStart = null; // Information about when and where the drag started.
@@ -16,7 +16,6 @@ export default class DragReorder {
     orderList = null; // Order list (HTMLElement).
     itemDragging = null; // Item being moved by dragging (jQuery object).
     proxy = null; // Drag proxy (jQuery object).
-
 
     constructor(config) {
         // Bring in the config to our state.
@@ -92,52 +91,26 @@ export default class DragReorder {
         }).catch(Notification.exception);
     }
 
-
     /**
      * Move the proxy to the current mouse position.
      */
     dragMove() {
-        let closestItem = null;
-        let closestDistance = null;
-        let currentGroup = null;
-
-        // Определяем ближайший элемент в списке.
-        this.orderList.querySelectorAll(this.config.item).forEach(element => {
-            const distance = this.distanceBetweenElements(element);
-            if (closestItem === null || distance < closestDistance) {
-                closestItem = $(element);
-                closestDistance = distance;
-            }
-        });
-
-        // Определяем группу, над которой находится элемент.
+        let targetGroup = null;
+        // Определяем, над какой зоной (группой) находится элемент.
         document.querySelectorAll('.sortablelist').forEach(container => {
             const rect = container.getBoundingClientRect();
+            const proxyRect = this.proxy[0].getBoundingClientRect();
             if (
-                this.proxy.offset().left > rect.left &&
-                this.proxy.offset().right < rect.right &&
-                this.proxy.offset().top > rect.top &&
-                this.proxy.offset().bottom < rect.bottom
+                proxyRect.left > rect.left &&
+                proxyRect.right < rect.right &&
+                proxyRect.top > rect.top &&
+                proxyRect.bottom < rect.bottom
             ) {
-                currentGroup = container;
+                targetGroup = container;
             }
         });
-
-        if (currentGroup) {
-            const groupList = currentGroup.querySelector('.sortablelist');
-            if (!groupList.contains(this.itemDragging[0])) {
-                groupList.appendChild(this.itemDragging[0]);
-            }
-        } else if (closestItem && closestItem[0] !== this.itemDragging[0]) {
-            const offsetValue = this.midY(this.proxy) < this.midY(closestItem) ? 20 : -20;
-            if (this.midY(this.proxy) + offsetValue < this.midY(closestItem)) {
-                this.itemDragging.insertBefore(closestItem);
-            } else {
-                this.itemDragging.insertAfter(closestItem);
-            }
-        }
-
-        this.updateProxy();
+        // Сохраняем целевую группу, если она определена.
+        this.targetGroup = targetGroup;
     }
 
     /**
@@ -152,23 +125,32 @@ export default class DragReorder {
             }
         }
     }
+
+    /**
+     * End dragging and move item to appropriate group.
+     */
     dragEnd() {
         if (typeof this.config.reorderEnd !== 'undefined') {
             this.config.reorderEnd(this.itemDragging.closest(this.config.list), this.itemDragging);
         }
-
-        // Если элемент не находится в допустимой зоне, возвращаем его в исходный контейнер.
-        if (!this.itemDragging.closest('.sortablelist')) {
+        // Если элемент находится над допустимой зоной (группой), перемещаем его туда.
+        if (this.targetGroup) {
+            const groupList = this.targetGroup.querySelector('.group-answers');
+            if (!groupList.contains(this.itemDragging[0])) {
+                groupList.appendChild(this.itemDragging[0]);
+            }
+        } else {
+            // Если элемент не находится над группой, возвращаем его в исходный контейнер.
             this.sourceContainer.append(this.itemDragging[0]);
         }
-
+        // Обновляем JSON только если порядок изменился.
         if (!this.arrayEquals(this.originalOrder, this.getCurrentOrder())) {
             const currentGroup = this.itemDragging.closest('.group-box')?.id || 'general-box';
             const newOrder = this.getCurrentOrder().map(itemId => ({
                 id: itemId,
                 group: currentGroup,
             }));
-            this.config.reorderDone(this.itemDragging.closest(this.config.list), this.itemDragging, newOrder);
+            this.config.reorderDone(this.sourceContainer, this.itemDragging, newOrder);
             getString('moved', 'qtype_ddingroups', {
                 item: this.itemDragging.find('[data-itemcontent]').text().trim(),
                 position: this.itemDragging.index() + 1,
@@ -177,13 +159,15 @@ export default class DragReorder {
                 this.config.announcementRegion.innerHTML = str;
             });
         }
-
+        // Убираем визуальные эффекты.
         this.proxy.remove();
         this.proxy = null;
-        this.itemDragging.removeClass(this.config.itemMovingClass);
+        this.itemDragging.removeClass(this.config.itemMovingClass); // Удаляем класс после завершения перетаскивания.
         this.itemDragging = null;
         this.dragStart = null;
+        this.targetGroup = null; // Сбрасываем целевую группу.
     }
+
     midX(node) {
         return node.offset().left + node.outerWidth() / 2;
     }
@@ -219,7 +203,7 @@ export default class DragReorder {
                 idGetter: item => {
                     return item.id;
                 },
-// eslint-disable-next-line no-unused-vars
+                // eslint-disable-next-line no-unused-vars
                 reorderDone: (list, item, newOrder) => {
                     const response = {};
                     document.querySelectorAll('.group-box, #general-box').forEach(container => {
