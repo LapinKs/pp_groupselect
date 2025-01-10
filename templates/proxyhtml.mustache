@@ -16,14 +16,17 @@
 }}
 {{!
     @template qtype_ddingroups/proxyhtml
-    Represents the visual element being dragged.
+    Represents the visual element being dragged for DDInGroups.
 }}
 
 <div class="que ddingroups dragproxy" style="position: absolute; {{proxyStyles}}">
-    <ul class="{{listClassName}}">
-        <li class="{{itemClassName}} item-moving">
-            {{{itemHtml}}}
+    <ul class="proxylist {{listClassName}}">
+        <li class="proxyitem {{itemClassName}} item-moving">
+            <div class="proxy-content">
+                {{{itemHtml}}}
+            </div>
         </li>
     </ul>
 </div>
+
 

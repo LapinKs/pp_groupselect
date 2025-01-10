@@ -21,7 +21,7 @@
 
 {{#specificfeedback}}
     <div class="specificfeedback">
-        {{{.}}}
+        {{{specificfeedback}}}
     </div>
 {{/specificfeedback}}
 
@@ -32,18 +32,20 @@
 {{/numpartscorrect}}
 
 {{#specificgradedetailfeedback}}
-    {{>qtype_ddingroups/specific_grade_detail_feedback}}
+    <div class="specificgradedetailfeedback">
+        {{>qtype_ddingroups/specific_grade_detail_feedback}}
+    </div>
 {{/specificgradedetailfeedback}}
 
 {{#hint}}
     <div class="hint">
-        {{{.}}}
+        {{{hint}}}
     </div>
 {{/hint}}
 
 {{#generalfeedback}}
     <div class="generalfeedback">
-        {{{.}}}
+        {{{generalfeedback}}}
     </div>
 {{/generalfeedback}}
 
@@ -52,3 +54,4 @@
         {{>qtype_ddingroups/correct_response}}
     </div>
 {{/rightanswer}}
+

@@ -1,10 +1,10 @@
 <?php
+
 namespace qtype_ddingroups\output;
 
 use renderer_base;
 use question_attempt;
 use question_display_options;
-
 
 class feedback extends renderable_base {
 
@@ -23,6 +23,12 @@ class feedback extends renderable_base {
         parent::__construct($qa);
     }
 
+    /**
+     * Export data for rendering feedback template.
+     *
+     * @param renderer_base $output The renderer for the template.
+     * @return array The data prepared for rendering the template.
+     */
     public function export_for_template(renderer_base $output): array {
         global $PAGE;
 
@@ -30,28 +36,32 @@ class feedback extends renderable_base {
         $question = $this->qa->get_question();
         $qtyperenderer = $PAGE->get_renderer('qtype_ddingroups');
 
+        // Handle specific feedback if required.
         if ($this->options->feedback) {
-            // Literal render out but we trust the teacher.
             $data['specificfeedback'] = $qtyperenderer->specific_feedback($this->qa);
 
+            // Handle specific grade details.
             $specificgradedetailfeedback = new specific_grade_detail_feedback($this->qa);
             $data['specificgradedetailfeedback'] = $specificgradedetailfeedback->export_for_template($output);
 
+            // Include applicable hint, if any.
             if ($hint = $this->qa->get_applicable_hint()) {
                 $data['hint'] = $question->format_hint($hint, $this->qa);
             }
         }
 
+        // Handle the number of parts correct, partial, and incorrect.
         if ($this->options->numpartscorrect) {
             $numpartscorrect = new num_parts_correct($this->qa);
             $data['numpartscorrect'] = $numpartscorrect->export_for_template($output);
         }
 
+        // General feedback, if required.
         if ($this->options->generalfeedback) {
-            // Literal render out but we trust the teacher.
             $data['generalfeedback'] = $question->format_generalfeedback($this->qa);
         }
 
+        // Correct response, if required.
         if ($this->options->rightanswer) {
             $correctresponse = new correct_response($this->qa);
             $data['rightanswer'] = $correctresponse->export_for_template($output);

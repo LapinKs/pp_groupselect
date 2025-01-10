@@ -22,7 +22,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
 
     public $showgrading;
 
-  
+
     public $correctfeedback;
 
     public $correctfeedbackformat;
@@ -30,9 +30,9 @@ class qtype_ddingroups_question extends question_graded_automatically {
     public $incorrectfeedback;
 
     public $incorrectfeedbackformat;
-  
+
     public $partiallycorrectfeedback;
- 
+
     public $partiallycorrectfeedbackformat;
 
 
@@ -40,10 +40,10 @@ class qtype_ddingroups_question extends question_graded_automatically {
 
     public $correctresponse;
 
- 
+
     public $currentresponse;
 
- 
+
     protected $itemscores = [];
 
     public function start_attempt(question_attempt_step $step, $variant) {
@@ -53,7 +53,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
             $this->correctresponse[$answerid] = $answer->groupid ?? 0; // Привязываем к группе или к "непривязанной".
         }
         $step->set_qt_var('_correctresponse', json_encode($this->correctresponse));
-    
+
         // Генерируем случайный начальный ответ.
         $shuffledanswers = array_keys($this->answers);
         shuffle($shuffledanswers);
@@ -63,11 +63,11 @@ class qtype_ddingroups_question extends question_graded_automatically {
         }
         $step->set_qt_var('_currentresponse', json_encode($this->currentresponse));
     }
-    
+
     public function apply_attempt_state(question_attempt_step $step) {
         $this->currentresponse = json_decode($step->get_qt_var('_currentresponse'), true) ?? [];
         $this->correctresponse = json_decode($step->get_qt_var('_correctresponse'), true) ?? [];
-        
+
         // Привязываем группы к ответам, если они есть в БД.
         foreach ($this->answers as $answerid => $answer) {
             if (!empty($answer->groupid)) {
@@ -75,8 +75,8 @@ class qtype_ddingroups_question extends question_graded_automatically {
             }
         }
     }
-    
-    
+
+
 
     // public function apply_attempt_state(question_attempt_step $step) {
     //     $this->currentresponse = array_filter(explode(',', $step->get_qt_var('_currentresponse')));
@@ -153,51 +153,51 @@ class qtype_ddingroups_question extends question_graded_automatically {
         $name = $this->get_response_fieldname();
         return [$name => json_encode($response)];
     }
-    
-    
+
+
 
     public function summarise_response(array $response) {
         $this->update_current_response($response);
-    
+
         $summary = [];
         foreach ($this->currentresponse as $answerid => $groupid) {
             $answer = $this->answers[$answerid];
             $summary[$groupid][] = $this->html_to_text($answer->answer, $answer->answerformat);
         }
-    
+
         $result = [];
         foreach ($summary as $groupid => $items) {
             $groupname = $this->groups[$groupid]->name ?? 'Unassigned'; // Название группы.
             $result[] = $groupname . ': ' . implode(', ', $items);
         }
-    
+
         return implode('; ', $result);
     }
-    
+
 
     public function classify_response(array $response) {
         $this->update_current_response($response);
-    
+
         $classifiedresponse = [];
         $fraction_per_item = 1 / count($this->correctresponse);
-    
+
         foreach ($this->correctresponse as $answerid => $correctgroupid) {
             $currentgroupid = $this->currentresponse[$answerid] ?? null;
             $fraction = ($currentgroupid === $correctgroupid) ? $fraction_per_item : 0;
-    
+
             $answer = $this->answers[$answerid];
             $subqid = question_utils::to_plain_text($answer->answer, $answer->answerformat);
-    
+
             $classifiedresponse[$subqid] = new question_classified_response(
                 $currentgroupid,
                 $this->groups[$currentgroupid]->name ?? 'Unassigned',
                 $fraction
             );
         }
-    
+
         return $classifiedresponse;
     }
-    
+
 
     public function is_complete_response(array $response) {
         $this->update_current_response($response);
@@ -208,7 +208,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
         }
         return true;
     }
-    
+
 
     public function is_gradable_response(array $response) {
         $this->update_current_response($response);
@@ -219,7 +219,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
         }
         return false;
     }
-    
+
 
     public function get_validation_error(array $response) {
         return '';
@@ -231,38 +231,64 @@ class qtype_ddingroups_question extends question_graded_automatically {
     }
 
     public function grade_response(array $response) {
+        // Логируем полученные данные от пользователя.
+        error_log('Submitted response: ' . json_encode($response));
+
+        // Обновляем текущий ответ.
         $this->update_current_response($response);
-    
+
+        // Логируем текущие и правильные ответы.
+        error_log('Correct response: ' . json_encode($this->correctresponse));
+        error_log('Current response: ' . json_encode($this->currentresponse));
+
         $correctresponse = $this->correctresponse;
         $currentresponse = $this->currentresponse;
-    
+
         $countcorrect = 0;
         $totalitems = count($correctresponse);
-    
+
+        // Логируем используемый тип оценивания.
+        error_log('Grading type: ' . $this->gradingtype);
+
         switch ($this->gradingtype) {
             case self::GRADING_ABSOLUTE_POSITION:
                 foreach ($correctresponse as $answerid => $correctgroupid) {
                     $currentgroupid = $currentresponse[$answerid] ?? null;
+
+                    // Логируем каждую проверку ответа.
+                    error_log("Answer ID: $answerid, Correct Group: $correctgroupid, Current Group: $currentgroupid");
+
                     if ($currentgroupid !== $correctgroupid) {
+                        error_log('Grading result: fraction=0');
                         return [0, question_state::graded_state_for_fraction(0)];
                     }
                 }
+                error_log('Grading result: fraction=1');
                 return [1, question_state::graded_state_for_fraction(1)];
-    
+
             case self::GRADING_RELATIVE_TO_CORRECT:
                 foreach ($correctresponse as $answerid => $correctgroupid) {
                     $currentgroupid = $currentresponse[$answerid] ?? null;
+
+                    // Логируем, если ответ совпадает с правильным.
                     if ($currentgroupid === $correctgroupid) {
                         $countcorrect++;
+                        error_log("Correct match found for Answer ID: $answerid");
                     }
                 }
                 $fraction = $countcorrect / $totalitems;
+
+                // Логируем итоговый результат оценки.
+                error_log("Grading result: fraction=$fraction, countcorrect=$countcorrect, totalitems=$totalitems");
                 return [$fraction, question_state::graded_state_for_fraction($fraction)];
         }
-    
+
+        // Возвращаем результат, если тип оценивания не указан или не поддерживается.
+        error_log('Grading result: fraction=0 (unsupported grading type)');
         return [0, question_state::graded_state_for_fraction(0)];
     }
-    
+
+
 
     public function check_file_access($qa, $options, $component, $filearea, $args, $forcedownload) {
         if ($component == 'question') {
@@ -303,7 +329,7 @@ class qtype_ddingroups_question extends question_graded_automatically {
     public function update_current_response(array $response) {
         $name = $this->get_response_fieldname();
         $this->currentresponse = []; // Сбрасываем текущий ответ.
-        
+
         if (isset($response[$name]) && !empty($response[$name])) {
             // Разбиваем данные ответа на группы.
             $groupData = json_decode($response[$name], true); // Предполагается, что данные хранятся в JSON.
@@ -315,8 +341,8 @@ class qtype_ddingroups_question extends question_graded_automatically {
             }
         }
     }
-    
-    
+
+
 
 
     public static function get_grading_types(?int $type = null): array|string {
@@ -328,9 +354,9 @@ class qtype_ddingroups_question extends question_graded_automatically {
         return self::get_types($types, $type);
     }
 
-    
 
- 
+
+
     public static function get_types(array $types, $type): array|string {
         if ($type === null) {
             return $types; // Return all $types.
@@ -345,27 +371,42 @@ class qtype_ddingroups_question extends question_graded_automatically {
 
     public function get_num_parts_right(array $response): array {
         $this->update_current_response($response);
-    
+
         $numright = 0;        // Количество элементов в правильных группах.
         $numpartial = 0;      // Количество элементов в неправильных группах.
         $numincorrect = 0;    // Количество элементов, которых нет в ответе.
-    
+
+        // Обрабатываем каждый ответ.
         foreach ($this->answers as $answerid => $answer) {
-            $correctgroup = $this->correctresponse[$answerid] ?? null; // Группа, в которую должен попасть элемент.
-            $currentgroup = $this->currentresponse[$answerid] ?? null; // Группа, в которую пользователь поместил элемент.
-    
+            $correctgroup = $this->correctresponse[$answerid] ?? null; // Правильная группа для элемента.
+            $currentgroup = $this->currentresponse[$answerid] ?? null; // Группа, выбранная пользователем.
+
+            // Элемент отсутствует в ответе.
             if ($currentgroup === null) {
-                $numincorrect++; // Элемент отсутствует в ответе.
-            } elseif ($currentgroup === $correctgroup) {
-                $numright++; // Элемент находится в правильной группе.
+                $numincorrect++;
+                continue;
+            }
+
+            // Если элемент находится в правильной группе.
+            if ($currentgroup === $correctgroup) {
+                $numright++;
             } else {
-                $numpartial++; // Элемент находится в неправильной группе.
+                // Если элемент находится в неправильной группе.
+                $numpartial++;
             }
         }
-    
+
+        // Дополнительная обработка: подсчёт пустых групп (если нужно).
+        foreach ($this->groups as $groupid => $group) {
+            if (empty($response[$groupid])) {
+                $numincorrect++; // Пустая группа считается неправильной.
+            }
+        }
+
         return [$numright, $numpartial, $numincorrect];
     }
-    
+
+
 
 
 

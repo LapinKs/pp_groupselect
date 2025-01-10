@@ -80,16 +80,20 @@ export default class DragReorder {
                 `width: ${this.itemDragging.outerWidth()}px;`,
                 `height: ${this.itemDragging.outerHeight()}px;`,
             ].join(' '),
-        }).then(({html, js}) => {
+        }).then(({ html, js }) => {
             this.proxy = $(Templates.appendNodeContents(document.body, html, js)[0]);
             this.proxy.css(this.itemDragging.offset());
 
-            this.itemDragging.addClass(this.config.itemMovingClass);
+            // Добавляем класс для визуализации перетаскивания.
+            if (this.itemDragging) {
+                this.itemDragging.addClass(this.config.itemMovingClass);
+            }
 
-            this.updateProxy();
             drag.start(e, this.proxy, this.dragMove.bind(this), this.dragEnd.bind(this));
         }).catch(Notification.exception);
     }
+
+
 
     /**
      * Move the proxy to the current mouse position.
@@ -101,17 +105,19 @@ export default class DragReorder {
             const rect = container.getBoundingClientRect();
             const proxyRect = this.proxy[0].getBoundingClientRect();
             if (
-                proxyRect.left > rect.left &&
-                proxyRect.right < rect.right &&
-                proxyRect.top > rect.top &&
-                proxyRect.bottom < rect.bottom
+                proxyRect.left < rect.right &&
+                proxyRect.right > rect.left &&
+                proxyRect.top < rect.bottom &&
+                proxyRect.bottom > rect.top
             ) {
                 targetGroup = container;
             }
         });
+
         // Сохраняем целевую группу, если она определена.
         this.targetGroup = targetGroup;
     }
+
 
     /**
      * Update proxy's position.
@@ -133,9 +139,10 @@ export default class DragReorder {
         if (typeof this.config.reorderEnd !== 'undefined') {
             this.config.reorderEnd(this.itemDragging.closest(this.config.list), this.itemDragging);
         }
-        // Если элемент находится над допустимой зоной (группой), перемещаем его туда.
+
         if (this.targetGroup) {
-            const groupList = this.targetGroup.querySelector('.group-answers');
+            // Если целевая группа определена, вставляем элемент в нее.
+            const groupList = this.targetGroup.querySelector('.group-answers') || this.targetGroup;
             if (!groupList.contains(this.itemDragging[0])) {
                 groupList.appendChild(this.itemDragging[0]);
             }
@@ -143,6 +150,7 @@ export default class DragReorder {
             // Если элемент не находится над группой, возвращаем его в исходный контейнер.
             this.sourceContainer.append(this.itemDragging[0]);
         }
+
         // Обновляем JSON только если порядок изменился.
         if (!this.arrayEquals(this.originalOrder, this.getCurrentOrder())) {
             const currentGroup = this.itemDragging.closest('.group-box')?.id || 'general-box';
@@ -159,14 +167,24 @@ export default class DragReorder {
                 this.config.announcementRegion.innerHTML = str;
             });
         }
+
         // Убираем визуальные эффекты.
         this.proxy.remove();
         this.proxy = null;
-        this.itemDragging.removeClass(this.config.itemMovingClass); // Удаляем класс после завершения перетаскивания.
+
+        // Удаляем класс itemMovingClass (item-moving).
+        if (this.itemDragging) {
+            this.itemDragging.removeClass(this.config.itemMovingClass); // jQuery метод.
+            this.itemDragging[0].classList.remove(this.config.itemMovingClass); // Явное удаление через DOM.
+        }
+
+        // Сбрасываем состояние.
         this.itemDragging = null;
         this.dragStart = null;
         this.targetGroup = null; // Сбрасываем целевую группу.
     }
+
+
 
     midX(node) {
         return node.offset().left + node.outerWidth() / 2;

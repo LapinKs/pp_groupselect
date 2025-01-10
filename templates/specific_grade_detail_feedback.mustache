@@ -33,11 +33,18 @@
                 <ol class="scoredetails">
                     {{#scoredetails}}
                         <li>
-                            {{score}} / {{maxscore}} = {{percent}}%
+                            {{#score}}{{score}}{{/score}} / {{#maxscore}}{{maxscore}}{{/maxscore}} = {{percent}}%
                         </li>
                     {{/scoredetails}}
                 </ol>
             </div>
         {{/groups}}
+
+        {{#totalscore}}
+        <p class="totalgradedetails">
+            {{#str}} totalgradedetails, qtype_ddingroups, {{totalscore}},{{totalmaxscore}},{{gradedetails}} {{/str}}
+        </p>
+        {{/totalscore}}
     </div>
 {{/showpartialwrong}}
+
