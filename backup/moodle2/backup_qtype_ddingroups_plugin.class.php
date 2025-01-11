@@ -1,5 +1,5 @@
 <?php
-
+// general commit
 class backup_qtype_ddingroups_plugin extends backup_qtype_plugin {
 
     /**
@@ -24,7 +24,7 @@ class backup_qtype_ddingroups_plugin extends backup_qtype_plugin {
 
         // Now create the qtype own structures.
         $fields = ['groupcount',
-            'gradingtype', 'showgrading', 
+            'gradingtype', 'showgrading',
             'correctfeedback', 'correctfeedbackformat',
             'incorrectfeedback', 'incorrectfeedbackformat',
             'partiallycorrectfeedback', 'partiallycorrectfeedbackformat', 'shownumcorrect',

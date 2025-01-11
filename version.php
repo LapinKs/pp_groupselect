@@ -1,5 +1,10 @@
 <?php
-
+/**
+ *
+ * @package   qtype_ddingroups
+ * @copyright -
+ * @author    Konstantin Lapin <kostyalapin777@mail.ru>
+ */
 
 
 

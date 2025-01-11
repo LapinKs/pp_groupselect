@@ -30,10 +30,10 @@ $string['gradingtype_help'] = '**All or nothing**
 &nbsp; If all items are in the correct position, then full marks are awarded. Otherwise, the score is zero.
 
 **Absolute position**
-&nbsp; An item is considered correct if it is in the same position as in the correct answer. The highest possible score for the question is **the same as** the number of items displayed to the student.
+&nbsp; An item is considered correct if it is in the same group as in the correct answer. The highest possible score for the question is **the same as** the number of items displayed to the student.
 
 **Relative to correct position**
-&nbsp; An item is considered correct if it is in the same position as in the correct answer. Correct items receive a score equal to the number of items displayed minus one. Incorrect items receive a score equal to the number of items displayed minus one and minus the distance of the item from its correct position. Thus, if ***n*** items are displayed to the student, the number of marks available for each item is ***(n - 1)***, and the highest mark available for the question is ***n x (n - 1)***, which is the same as ***(n² - n)***.';
+&nbsp; An item is considered correct if it is in the same group as in the correct answer. Score is ';
 
 $string['highlightresponse'] = 'Highlight response as correct or incorrect';
 $string['horizontal'] = 'Horizontal';

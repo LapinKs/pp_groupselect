@@ -8,7 +8,6 @@ class correct_response extends renderable_base {
         $correctresponse = $question->correctresponse;
         $data['hascorrectresponse'] = !empty($correctresponse);
 
-        // Если правильного ответа нет, ранний возврат.
         if (!$data['hascorrectresponse']) {
             return $data;
         }

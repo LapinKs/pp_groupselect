@@ -1,5 +1,10 @@
 <?php
-
+/**
+ *
+ * @package   qtype_ddingroups
+ * @copyright -
+ * @author    Konstantin Lapin <kostyalapin777@mail.ru>
+ */
 namespace qtype_ddingroups\output;
 
 use renderer_base;
@@ -7,7 +12,6 @@ use question_attempt;
 use question_display_options;
 
 class feedback extends renderable_base {
-
     /**
      * Define the feedback with options for display.
      *

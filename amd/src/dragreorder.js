@@ -93,8 +93,6 @@ export default class DragReorder {
         }).catch(Notification.exception);
     }
 
-
-
     /**
      * Move the proxy to the current mouse position.
      */
@@ -118,7 +116,6 @@ export default class DragReorder {
         this.targetGroup = targetGroup;
     }
 
-
     /**
      * Update proxy's position.
      */
@@ -135,23 +132,24 @@ export default class DragReorder {
     /**
      * End dragging and move item to appropriate group.
      */
+    /**
+     * End dragging and move item to appropriate group.
+     */
     dragEnd() {
         if (typeof this.config.reorderEnd !== 'undefined') {
             this.config.reorderEnd(this.itemDragging.closest(this.config.list), this.itemDragging);
         }
 
         if (this.targetGroup) {
-            // Если целевая группа определена, вставляем элемент в нее.
-            const groupList = this.targetGroup.querySelector('.group-answers') || this.targetGroup;
+            const groupList = this.targetGroup.querySelector('.sortablelist') || this.targetGroup;
             if (!groupList.contains(this.itemDragging[0])) {
                 groupList.appendChild(this.itemDragging[0]);
             }
         } else {
-            // Если элемент не находится над группой, возвращаем его в исходный контейнер.
             this.sourceContainer.append(this.itemDragging[0]);
         }
 
-        // Обновляем JSON только если порядок изменился.
+        // Убедитесь, что порядок обновляется, если он изменился.
         if (!this.arrayEquals(this.originalOrder, this.getCurrentOrder())) {
             const currentGroup = this.itemDragging.closest('.group-box')?.id || 'general-box';
             const newOrder = this.getCurrentOrder().map(itemId => ({
@@ -162,7 +160,7 @@ export default class DragReorder {
             getString('moved', 'qtype_ddingroups', {
                 item: this.itemDragging.find('[data-itemcontent]').text().trim(),
                 position: this.itemDragging.index() + 1,
-                total: this.orderList.querySelectorAll(this.config.item).length
+                total: this.orderList.querySelectorAll(this.config.item).length,
             }).then((str) => {
                 this.config.announcementRegion.innerHTML = str;
             });
@@ -172,18 +170,17 @@ export default class DragReorder {
         this.proxy.remove();
         this.proxy = null;
 
-        // Удаляем класс itemMovingClass (item-moving).
+        // Сброс классов и состояний.
         if (this.itemDragging) {
-            this.itemDragging.removeClass(this.config.itemMovingClass); // jQuery метод.
-            this.itemDragging[0].classList.remove(this.config.itemMovingClass); // Явное удаление через DOM.
+            this.itemDragging.removeClass(this.config.itemMovingClass);
+            this.itemDragging.removeClass('from-spawn-group'); // Убираем классы старого контейнера
+            this.itemDragging.addClass('in-target-group'); // Добавляем класс нового контейнера
         }
 
-        // Сбрасываем состояние.
         this.itemDragging = null;
         this.dragStart = null;
-        this.targetGroup = null; // Сбрасываем целевую группу.
+        this.targetGroup = null;
     }
-
 
 
     midX(node) {

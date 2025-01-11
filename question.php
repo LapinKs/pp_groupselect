@@ -1,5 +1,7 @@
 <?php
 
+// general commit
+
 class qtype_ddingroups_question extends question_graded_automatically {
 
     const LAYOUT_VERTICAL = 0;

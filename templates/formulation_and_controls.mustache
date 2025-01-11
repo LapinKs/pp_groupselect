@@ -5,23 +5,24 @@
 <div class="layout-container">
     <!-- Контейнер для групп -->
     <div class="groups-container {{layout}}">
-        {{#groups}}
-        <div class="group-box" id="{{groupid}}">
-            <div class="group-header">
-                <h3 class="group-title">{{{groupname}}}</h3>
-            </div>
-            <div class="group-content">
-                <ul class="sortablelist" id="{{groupid}}-list">
-                    <!-- Пустые списки для перетаскивания элементов -->
-                </ul>
-            </div>
+    {{#groups}}
+    <div class="group-box {{layout}}" id="{{groupid}}">
+        <div class="group-header {{layout}}-header">
+            <h4 class="group-title">{{{groupname}}}</h4>
         </div>
-        {{/groups}}
+        <div class="group-content {{layout}}-content">
+            <ul class="sortablelist" id="{{groupid}}-list">
+                <!-- Пустые списки для перетаскивания элементов -->
+            </ul>
+        </div>
     </div>
+    {{/groups}}
+</div>
+
 
     <!-- Общий бокс для всех элементов -->
     <div class="general-box">
-        <h3>Ответы</h3>
+
         <ul class="sortablelist" id="general-box-list">
             <!-- Все элементы изначально находятся здесь -->
             {{#groups}}
@@ -40,7 +41,6 @@
     </div>
 </div>
 
-<!-- Скрытое поле для хранения результата -->
 <input name="{{responsename}}" id="{{responseid}}" type="hidden" value="{{value}}" />
 
 <!-- Скрипт для инициализации drag-and-drop -->

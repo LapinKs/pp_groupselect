@@ -24,24 +24,24 @@ class formulation_and_controls extends renderable_base {
         global $DB;
         $data = [];
         $question = $this->qa->get_question();
-    
+
         $response = $this->qa->get_last_qt_data();
         $question->update_current_response($response);
-    
+
         $currentresponse = $question->currentresponse ?? [];
         $correctresponse = $question->correctresponse ?? [];
-    
+
         $data['questiontext'] = $question->format_questiontext($this->qa);
         $answers = $DB->get_records('qtype_ddingroups_items', ['questionid' => $question->id]);
-    
+
         $data['layout'] = $question->layouttype == \qtype_ddingroups_question::LAYOUT_HORIZONTAL ? 'horizontal' : 'vertical';
         $groups = $DB->get_records('qtype_ddingroups_groups', ['questionid' => $question->id], 'groupnumber');
-    
+
         $groupedItems = [];
         foreach ($answers as $answer) {
             $groupid = $answer->groupid;
             $answerid = $answer->id;
-    
+
             if (isset($groups[$groupid])) {
                 if (!isset($groupedItems[$groupid])) {
                     $groupedItems[$groupid] = [];
@@ -51,11 +51,11 @@ class formulation_and_controls extends renderable_base {
                 error_log("Warning: Answer with ID {$answerid} has invalid group ID {$groupid}.");
             }
         }
-    
+
         error_log('data answers: ' . json_encode($answers));
         error_log('data groups: ' . json_encode($groups));
         error_log('Grouped items: ' . json_encode($groupedItems));
-    
+
         // Формируем группы с их элементами.
         $data['groups'] = [];
         foreach ($groups as $groupid => $group) {
@@ -64,7 +64,7 @@ class formulation_and_controls extends renderable_base {
                 'groupid' => "group-box-{$groupid}",
                 'items' => [],
             ];
-    
+
             if (isset($groupedItems[$groupid])) {
                 foreach ($groupedItems[$groupid] as $itemid) {
                     if (isset($answers[$itemid])) {
@@ -83,10 +83,10 @@ class formulation_and_controls extends renderable_base {
                     }
                 }
             }
-    
+
             $data['groups'][] = $groupdata;
         }
-    
+
         // Непривязанные элементы.
         $data['unassigned'] = [];
         foreach ($answers as $itemid => $answer) {
@@ -104,17 +104,17 @@ class formulation_and_controls extends renderable_base {
                 ];
             }
         }
-    
+
         $data['groupcount'] = count($groups);
         $data['readonly'] = $this->options->readonly;
         $data['active'] = $this->qa->get_state()->is_active();
         error_log('data: ' . json_encode($data));
-    
+
         return $data;
     }
-    
-    
-    
-    
-    
+
+
+
+
+
 }

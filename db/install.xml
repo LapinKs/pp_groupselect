@@ -2,7 +2,7 @@
 <XMLDB PATH="question/type/ddingroups/db" VERSION="20241205" COMMENT="XMLDB file for Moodle question/type/ddingroups"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
->
+><!-- general commit -->
   <TABLES>
     <!-- Основная таблица для хранения настроек типа вопроса -->
     <TABLE NAME="qtype_ddingroups_options" COMMENT="Options for drag-and-drop questions">

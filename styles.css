@@ -1,257 +1,59 @@
-/* .que.ordering div.answer.ordering {
-    overflow: auto;
-}
 
-.que.ordering .sortablelist {
-    float: left;
-    list-style-type: none;
-    margin: 0 0 0 8px;
-}
-.que.ordering .sortablelist.active {
-    border: 1px dotted #333;
-    border-radius: 4px;
-}
-
-.que.ordering .sortablelist li {
-    background-color: #fff;
-    border: 1px solid #000;
-    border-radius: 4px;
-    list-style-type: none;
-    margin: 4px;
-}
-
-.que.ordering .sortablelist li .grip {
-    opacity: 0.45;
-}
-
-.que.ordering .sortablelist li.sortableitem {
-    position: relative;
-    cursor: move;
-    margin-left: 26px;
-}
-
-.que.ordering .sortablelist li.sortableitem:first-of-type [data-action="move-backward"],
-.que.ordering .sortablelist li.sortableitem:last-of-type [data-action="move-forward"] {
-    visibility: hidden;
-}
-
-.que.ordering .sortableitem .btn.btn-icon {
-    height: 32px;
-    width: 32px;
-    border-radius: 0.5rem;
-}
-
-.que.ordering .sortablelist.numbering123 li,
-.que.ordering .sortablelist.numberingabc li,
-.que.ordering .sortablelist.numberingABCD li,
-.que.ordering .sortablelist.numberingiii li,
-.que.ordering .sortablelist.numberingIIII li {
-    margin-left: 26px;
-}
-
-.que.ordering .sortablelist.numberingnone li {
-    list-style-type: none;
-    margin-left: 0;
-}
-.que.ordering .sortablelist.numbering123 li {
-    list-style-type: decimal;
-}
-.que.ordering .sortablelist.numberingabc li {
-    list-style-type: lower-alpha;
-}
-.que.ordering .sortablelist.numberingABCD li {
-    list-style-type: upper-alpha;
-}
-.que.ordering .sortablelist.numberingiii li {
-    list-style-type: lower-roman;
-}
-.que.ordering .sortablelist.numberingIIII li {
-    list-style-type: upper-roman;
-}
-
-.que.ordering .sortablelist.horizontal {
-    display: flex;
-    flex-wrap: wrap;
-}
-
-
-.que.ordering .sortablelist.horizontal {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-}
-
-.que.ordering .sortablelist.vertical li {
-    min-height: 18px;
-}
-
-
-.que.ordering.dragproxy {
-    margin: 0;
-    padding: 0;
-    border: 0 none;
-}
-.que.ordering.dragproxy .sortablelist {
-    margin: 0;
-    padding: 0;
-    float: none;
-}
-.que.ordering.dragproxy .sortablelist li {
-    margin: 0;
-    padding: 6px 0 6px 12px;
-    width: 100%;
-}
-.que.ordering.dragproxy .sortablelist li.horizontal {
-    float: none;
-} */
-.item-moving {
-    box-shadow: 3px 3px 4px #000;
-}
-.current-drop {
-    visibility: hidden;
-}
-
-
-
-.que.ordering .sortablelist.notactive li.correct {
-    background-color: #dff4d8;
-    border-color: #9f6;
-}
-.que.ordering .sortablelist.notactive li.partial66 {
-    background-color: #dff4d8;
-    border-color: #f90;
-}
-.que.ordering .sortablelist.notactive li.partial33 {
-    background-color: #ffebcc;
-    border-color: #f90;
-}
-.que.ordering .sortablelist.notactive li.partial00 {
-    background-color: #fdd;
-    border-color: #f90;
-}
-.que.ordering .sortablelist.notactive li.incorrect {
-    background-color: #fdd;
-    border-color: #ff7373;
-}
-
-.que.ordering div.rightanswer {
-    overflow: auto;
-}
-.que.ordering div.rightanswer ol.correctorder {
-    padding-inline-start: 16px;
-}
-.que.ordering div.rightanswer ol.correctorder.horizontal {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-}
-.que.ordering div.rightanswer ol.correctorder li.horizontal {
-    margin-left: 24px;
-    margin-right: 24px;
-}
-.que.ordering div.rightanswer ol.correctorder li.vertical {
-    margin-left: 24px;
-}
-
-
-#page-question-type-ordering form.mform fieldset:nth-child(n+4) div.feditor {
-    max-width: 480px;
-}
 .sortablelist {
-    border: 1px dashed #aaa;
+    position: relative;
     min-height: 50px;
     padding: 10px;
     margin: 10px 0;
     border-radius: 5px;
+    list-style: none;
     transition: border-color 0.3s ease;
 }
 
 .sortablelist.drag-over {
-    border-color: #0073e6; /* Синий цвет при наведении. */
+    border-color: #0073e6;
+    background-color: #f9f9f9;
 }
+
 
 .sortableitem {
     display: inline-block;
-    padding: 5px 10px;
+    padding: 8px;
     margin: 5px;
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 3px;
+    background-color: #f8f9f9;
     cursor: grab;
     font-size: 14px;
+    user-select: none;
     white-space: nowrap;
+    transition: background-color 0.3s;
+    border-radius: 5px;
+
 }
 
 .sortableitem.dragging {
-    opacity: 0.7;
     background-color: #d1ecf1;
     cursor: grabbing;
-}
-/* Общие стили для групп */
-.layout-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
+    border-radius: 5px;
 }
 
-.groups {
-    display: flex;
-    gap: 16px;
-}
 
-.group-box {
-    border: 1px solid #ccc;
-    padding: 8px;
-    border-radius: 4px;
-    min-width: 150px;
-    flex-grow: 1;
-}
 
-.group-box .sortablelist {
-    list-style-type: none;
-    padding: 0;
-    margin: 8px 0;
-}
-
-.group-box .sortablelist li {
-    padding: 8px;
-    margin-bottom: 4px;
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: grab;
-}
-
-/* Горизонтальный layout */
-.layout-container.horizontal {
-    flex-direction: column;
-}
-
-.layout-container.horizontal .groups {
-    flex-direction: row;
-}
-
-/* Вертикальный layout */
-.layout-container.vertical {
-    flex-direction: row;
-}
-
-.layout-container.vertical .groups {
-    flex-direction: column;
-}
 .layout-container {
     display: flex;
     flex-direction: column;
+    gap: 16px;
+}
+
+.groups-container {
+    display: flex;
+    gap: 16px;
 }
 
 .groups-container.horizontal {
-    display: flex;
     flex-direction: row;
     justify-content: space-between;
 }
 
 .groups-container.vertical {
-    display: flex;
     flex-direction: column;
 }
 
@@ -261,60 +63,162 @@
     margin: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 10px;
+    padding: 5px;
+    min-width: 150px;
+    flex-grow: 1;
 }
 
 .group-header {
-    margin-right: 15px; /* Отступ текста группы */
+    margin-right: 15px;
     flex-shrink: 0;
 }
 
 .group-content {
     flex-grow: 1;
+    padding: 0;
+    margin: 8px 0;
 }
+
 
 .general-box {
     margin-top: 20px;
-    border: 1px solid #ccc;
+    border: 1px solid black;
     border-radius: 4px;
+    padding: 5px;
+}
+
+
+.que.ddingroups div.rightanswer {
+    overflow: auto;
+}
+
+.que.ddingroups div.rightanswer ol.correctorder {
+    padding-inline-start: 16px;
+}
+
+.que.ddingroups div.rightanswer ol.correctorder.horizontal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.que.ddingroups div.rightanswer ol.correctorder li.horizontal {
+    margin-left: 24px;
+    margin-right: 24px;
+}
+
+.que.ddingroups div.rightanswer ol.correctorder li.vertical {
+    margin-left: 24px;
+}
+
+.que.ddingroups .sortablelist.notactive li.correct,
+.que.ddingroups .sortablelist.notactive li.partial66 {
+    background-color: #dff4d8;
+    border-color: #9f6;
+}
+
+.que.ddingroups .sortablelist.notactive li.partial33 {
+    background-color: #ffebcc;
+    border-color: #f90;
+}
+
+.que.ddingroups .sortablelist.notactive li.partial00,
+.que.ddingroups .sortablelist.notactive li.incorrect {
+    background-color: #fdd;
+    border-color: #f90;
+}
+.groups-container {
+    display: flex;
+    gap: 16px;
+}
+
+.groups-container.horizontal {
+    flex-direction: row;
+}
+
+.groups-container.vertical {
+    flex-direction: column;
+}
+
+.group-box {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid black;
     padding: 10px;
+    border-radius: 5px;
+    min-width: 200px;
+    gap: 10px;
 }
 
-.sortablelist {
+.group-box.vertical {
+    flex-direction: row;
+    align-items: center;
+}
+.group-box.hotizontal {
+    flex-direction: column;
+    align-items: center;
+    min-width: 200px;
+}
+
+.group-header {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.group-header.vertical {
+    margin-right: 15px;
+    width: auto;
+}
+
+
+
+.group-box.horizontal {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex-grow: 1;
+}
+
+.group-content {
+    flex-grow: 1;
+    min-width: 100%;
+    padding-bottom: -10px;
+    padding-top: -100px;
+    margin-bottom: -15px;
+
+}
+.group-header{
+    text-align: center;
+    flex-grow: 1; min-width: 100%;
+    margin-bottom: -30px;
+    margin-top: -10px;
+}
+.vertical-header{
+     min-width: 5%;
+    margin-top: -10px;
+    margin-bottom: -10px;
+}
+.group-content.vertical-content{
+    min-width: 80%;
+   margin-bottom: 0px;
+   padding-right:20px;
+   border: 1px dashed black;
+   border-radius: 5px;
+   right: 20px;
+}.group-content.horizontal-content {
+    gap: 10px;
+    width: 100%;
+    border: 1px dashed black;
+    margin-bottom: 0px;
+    border-radius: 5px;
+    margin-top: 15px;
+}
+.grade-list{
     list-style: none;
-    padding: 0;
-    margin: 0;
 }
-/* Подсветка области, куда можно бросить элемент */
-.sortablelist.drag-over {
-    border: 2px dashed #ccc;
-    background-color: #f9f9f9;
+.group-box.vertical{
+    max-width: 80%;
 }
-
-/* Элемент, который перетаскивается */
-.dragging {
-    opacity: 0.5;
-    border: 1px solid #999;
-    cursor: grabbing;
-}
-.sortablelist {
-    position: relative;
-}
-
-.sortableitem {
-    cursor: grab;
-    user-select: none;
-}
-
-.sortableitem.dragging {
-    opacity: 0.5;
-}
-.dragproxy {
-    border: 2px dashed red;
-    background-color: rgba(255, 0, 0, 0.2);
-    z-index: 1000;
-}
-.sortablelist {
-    border: 2px dashed #ccc;
-    min-height: 50px;
+.group-box.horizontal{
+    max-width: 80%;
 }

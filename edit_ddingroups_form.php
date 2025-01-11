@@ -44,13 +44,13 @@ class qtype_ddingroups_edit_form extends question_edit_form {
 
     public function definition_inner($mform): void {
         global $PAGE;
-    
+
         // Поле для типа макета.
         $options = qtype_ddingroups_question::get_layout_types();
         $mform->addElement('select', 'layouttype', get_string('layouttype', 'qtype_ddingroups'), $options);
         $mform->addHelpButton('layouttype', 'layouttype', 'qtype_ddingroups');
         $mform->setDefault('layouttype', $this->get_default_value('layouttype', qtype_ddingroups_question::LAYOUT_VERTICAL));
-    
+
         // Поле для типа оценивания.
         $options = qtype_ddingroups_question::get_grading_types();
         $mform->addElement('select', 'gradingtype', get_string('gradingtype', 'qtype_ddingroups'), $options);
@@ -59,41 +59,40 @@ class qtype_ddingroups_edit_form extends question_edit_form {
             'gradingtype',
             $this->get_default_value('gradingtype', qtype_ddingroups_question::GRADING_ABSOLUTE_POSITION)
         );
-    
+
         // Поле для отображения оценивания.
         $options = [0 => get_string('hide'), 1 => get_string('show')];
         $mform->addElement('select', 'showgrading', get_string('showgrading', 'qtype_ddingroups'), $options);
         $mform->addHelpButton('showgrading', 'showgrading', 'qtype_ddingroups');
         $mform->setDefault('showgrading', $this->get_default_value('showgrading', 1));
-    
+
         // Добавляем заголовок для групп.
         $mform->addElement('header', 'groupsheader', get_string('groups', 'qtype_ddingroups'));
         $mform->setExpanded('groupsheader', true);
-    
+
         // Поля для групп.
         $elements1 = [];
         $options1 = [];
         $elements1[] = $mform->createElement('text', 'groups', get_string('groupno', 'qtype_ddingroups'));
         $elements1[] = $mform->createElement('html', '<hr>');
         $options1['groups'] = ['type' => PARAM_RAW];
-    
-        // Используем `get_groups_repeats` для расчёта повторений.
+
         $this->add_repeat_elements($mform, 'groups', $elements1, $options1, $this->get_groups_repeats($this->question));
         $mform->addHelpButton('groups', 'groups', 'qtype_ddingroups');
-    
+
         // Формируем массив групп для выбора.
         // Формируем массив групп.
         $groupsf = 0;
         $ggg = [];
-        $ggg[]  = $mform->getElement('count'.'groups'.'s')->getValue(); 
+        $ggg[]  = $mform->getElement('count'.'groups'.'s')->getValue();
 
         foreach ($ggg as $i) {
             $groupsf += (int)$i;
         }
-    
-    // $groupsArray = [0 => 'Wrong answer']; 
+
+    // $groupsArray = [0 => 'Wrong answer'];
 for ($i = 1; $i <= $groupsf; $i++) {
-    $groupsArray[$i] = "Group $i"; // Индексы групп — числа, начиная с 1.
+    $groupsArray[$i] = "Group $i";
 }
 $mform->addElement('header', 'answersheader', get_string('draggableitems', 'qtype_ddingroups'));
         $mform->setExpanded('answersheader', true);
@@ -121,18 +120,18 @@ if (!empty($this->question->selectgroup)) {
 
         // Настройка редакторов HTML.
         $this->adjust_html_editors($mform, 'answer');
-    
+
         // Добавляем поля обратной связи.
         $this->add_combined_feedback_fields(true);
-    
+
         // Добавляем настройки интерактивности.
         $this->add_interactive_settings(false, true);
     }
-    
-    
-    
-    
-    
+
+
+
+
+
     protected function add_repeat_elements(MoodleQuickForm $mform, string $type, array $elements, array $options, int $repeats = null): void {
         // Cache element names.
         $types = $type.'s';
@@ -140,31 +139,31 @@ if (!empty($this->question->selectgroup)) {
         $counttypes = 'count'.$types;
         $addtypescount = $addtypes.'count';
         $addtypesgroup = $addtypes.'group';
-    
+
         // Если количество повторений не передано, используем значение по умолчанию.
         $repeats = $repeats ?? $this->get_answer_repeats($this->question);
-    
+
         $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
         $label = ($count == 1 ? 'addsingle'.$type : 'addmultiple'.$types);
         $label = get_string($label, 'qtype_ddingroups', $count);
-    
+
         $this->repeat_elements($elements, $repeats, $options, $counttypes, $addtypes, $count, $label, true);
-    
+
         // Remove the original "Add xxx" button ...
         $mform->removeElement($addtypes);
-    
+
         // ... and replace it with "Add" button + select group.
         $options = $this->get_addcount_options($type);
         $mform->addGroup([
             $mform->createElement('submit', $addtypes, get_string('add')),
             $mform->createElement('select', $addtypescount, '', $options),
         ], $addtypesgroup, '', ' ', false);
-    
+
         // Set default value and type of select element.
         $mform->setDefault($addtypescount, $count);
         $mform->setType($addtypescount, PARAM_INT);
     }
-    
+
     protected function add_repeat_groups(MoodleQuickForm $mform, string $type, array $elements, array $options, int $repeats = null): void {
         // Cache element names.
         $types = $type.'s';
@@ -172,48 +171,48 @@ if (!empty($this->question->selectgroup)) {
         $counttypes = 'count'.$types;
         $addtypescount = $addtypes.'count';
         $addtypesgroup = $addtypes.'group';
-    
+
         // Если количество повторений не передано, используем значение по умолчанию.
         $repeats = $repeats ?? $this->get_groups_repeats($this->question);
-    
+
         $count = optional_param($addtypescount, self::NUM_ITEMS_ADD, PARAM_INT);
         $label = ($count == 1 ? 'addsingle'.$type : 'addmultiple'.$types);
         $label = get_string($label, 'qtype_ddingroups', $count);
-    
+
         $this->repeat_elements($elements, $repeats, $options, $counttypes, $addtypes, $count, $label, true);
-    
+
         // Remove the original "Add xxx" button ...
         $mform->removeElement($addtypes);
-    
+
         // ... and replace it with "Add" button + select group.
         $options = $this->get_addcount_options($type);
         $mform->addGroup([
             $mform->createElement('submit', $addtypes, get_string('add')),
             $mform->createElement('select', $addtypescount, '', $options),
         ], $addtypesgroup, '', ' ', false);
-    
+
         // Set default value and type of select element.
         $mform->setDefault($addtypescount, $count);
         $mform->setType($addtypescount, PARAM_INT);
     }
-    
-    
+
+
     public function data_preprocessing($question): stdClass {
         $question = parent::data_preprocessing($question);
-    
+
         // Проверяем, есть ли options.
         if (!isset($question->options)) {
             $question->options = new stdClass();
         }
-    
+
         // Preprocess feedback.
         $question = $this->data_preprocessing_combined_feedback($question, true);
         $question = $this->data_preprocessing_hints($question, false, true);
-    
+
         // Preprocess drag items (answers) and their group bindings.
         $question->answer = [];
         $question->selectgroup = [];
-    
+
         if (!empty($question->options->dragitems)) {
             foreach ($question->options->dragitems as $item) {
                 $itemid = file_get_submitted_draft_itemid("answer[{$item->id}]");
@@ -226,21 +225,21 @@ if (!empty($this->question->selectgroup)) {
                     $this->editoroptions,
                     $item->content
                 );
-    
+
                 $question->answer[] = [
                     'text' => $text,
                     'format' => $item->contentformat,
                     'itemid' => $itemid,
                 ];
-    
+
                 $question->selectgroup[] = $item->groupid;
             }
         }
-    
+
         // Логирование для отладки.
         error_log('Drag items: ' . json_encode($question->answer));
         error_log('Group mappings: ' . json_encode($question->selectgroup));
-    
+
         // Preprocess groups (названия групп).
         $question->groups = [];
         if (!empty($question->options->groups)) {
@@ -248,10 +247,10 @@ if (!empty($this->question->selectgroup)) {
                 $question->groups[] = $group->content; // Названия групп.
             }
         }
-    
+
         // Логирование групп.
         error_log('Groups: ' . json_encode($question->groups));
-    
+
         // Устанавливаем значения по умолчанию для дополнительных полей.
         $names = [
             'layouttype' => qtype_ddingroups_question::LAYOUT_VERTICAL,
@@ -261,14 +260,14 @@ if (!empty($this->question->selectgroup)) {
         foreach ($names as $name => $default) {
             $question->$name = $question->options->$name ?? $this->get_default_value($name, $default);
         }
-    
+
         return $question;
     }
-    
-    
-    
-    
-    
+
+
+
+
+
 
     protected function data_preprocessing_hints($question, $withclearwrong = false, $withshownumpartscorrect = false): stdClass {
         if (empty($question->hints)) {
@@ -286,7 +285,7 @@ if (!empty($this->question->selectgroup)) {
 
     public function validation($data, $files): array {
         $errors = [];
-        
+
 
         // Проверка на дубликаты названий групп (только для непустых названий).
         if (!empty($data['groups'])) {
@@ -302,7 +301,7 @@ if (!empty($this->question->selectgroup)) {
                 }
             }
         }
-    
+
         // Проверка: нельзя оставить пустой ответ для группы, отличной от "Wrong answer".
         if (!empty($data['answer'])) {
             foreach ($data['answer'] as $index => $answer) {
@@ -314,7 +313,7 @@ if (!empty($this->question->selectgroup)) {
                 }
             }
         }
-    
+
         // Проверка: названия групп на которые ссылаются варианты ответов.
         if (!empty($data['answer']) && !empty($data['groups'])) {
             foreach ($data['answer'] as $index => $answer) {
@@ -327,7 +326,7 @@ if (!empty($this->question->selectgroup)) {
                 }
             }
         }
-    
+
         // Проверка на дубликаты ответов.
         $answers = [];
         $answercount = 0;
@@ -349,17 +348,17 @@ if (!empty($this->question->selectgroup)) {
                 $answercount++;
             }
         }
-       
+
         // Проверка: минимальное количество ответов.
 
             if ($answercount == 0) {
                 $errors['answer[0]'] = get_string('notenoughanswers', 'qtype_ddingroups', 1);
             }
-    
+
         // Если это новый вопрос, обновляем значения по умолчанию.
         if (empty($errors) && empty($data['id'])) {
             $fields = [
-                'layouttype', 
+                'layouttype',
                 'gradingtype', 'showgrading', 'numberingstyle',
             ];
             foreach ($fields as $field) {
@@ -368,12 +367,12 @@ if (!empty($this->question->selectgroup)) {
                 }
             }
         }
-    
+
         return $errors;
     }
-    
-    
-    
+
+
+
 
     /**
      * Returns answer repeats count
@@ -541,9 +540,9 @@ if (!empty($this->question->selectgroup)) {
         return [$repeated, $repeatedoptions];
     }
 
-    
-    
-    
+
+
+
 
     /**
      * Get array of countable item types
@@ -566,5 +565,5 @@ if (!empty($this->question->selectgroup)) {
     }
 
 
-    
+
 }

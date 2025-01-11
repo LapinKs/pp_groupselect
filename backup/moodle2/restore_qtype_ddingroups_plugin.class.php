@@ -1,5 +1,5 @@
 <?php
-
+// general commit
 
 class restore_qtype_ddingroups_plugin extends restore_qtype_plugin {
 

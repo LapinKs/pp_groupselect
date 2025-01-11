@@ -1,5 +1,10 @@
 <?php
-
+/**
+ *
+ * @package   qtype_ddingroups
+ * @copyright -
+ * @author    Konstantin Lapin <kostyalapin777@mail.ru>
+ */
 use qtype_ddingroups\output\correct_response;
 use qtype_ddingroups\output\feedback;
 use qtype_ddingroups\output\formulation_and_controls;
@@ -16,7 +21,7 @@ class qtype_ddingroups_renderer extends qtype_with_combined_feedback_renderer {
         return $this->output->render_from_template('qtype_ddingroups/formulation_and_controls',
             $formulationandcontrols->export_for_template($this->output));
     }
-    
+
 
     public function feedback(question_attempt $qa, question_display_options $options): string {
         $feedback = new feedback($qa, $options);
